@@ -112,7 +112,7 @@ class HDFileSystem():
         "Fetch physical locations of blocks"
         assert self._handle, "Filesystem not connected"
         fi = self.info(path)
-        length = length or fi.size
+        length = length or fi['size']
         nblocks = ctypes.c_int(0)
         out = lib.hdfsGetFileBlockLocations(self._handle, ensure_byte(path),
                                 ctypes.c_int64(start), ctypes.c_int64(length),
@@ -128,7 +128,17 @@ class HDFileSystem():
         return locs
     
     def info(self, path):
-        return lib.hdfsGetPathInfo(self._handle, ensure_byte(path)).contents
+        fi = lib.hdfsGetPathInfo(self._handle, ensure_byte(path)).contents
+        out = struct_to_dict(fi)
+        lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
+        return out
+    
+    def ls(self, path):
+        num = ctypes.c_int(0)
+        fi = lib.hdfsListDirectory(self._handle, ensure_byte(path), ctypes.byref(num))
+        out = [struct_to_dict(fi[i]) for i in range(num.value)]
+        lib.hdfsFreeFileInfo(fi, num.value)
+        return out
     
     def __repr__(self):
         state = ['Disconnected', 'Connected'][self._handle is not None]
@@ -138,8 +148,29 @@ class HDFileSystem():
         if self._handle:
             self.disconnect()
     
-    # TODO: other typical filesystem tasks
+    def mkdir(self, path):
+        out = lib.hdfsCreateDirectory(self._handle, ensure_byte(path))
+        return out == 0
+        
+    def set_replication(self, path, repl):
+        out = lib.hdfsSetReplication(self._handle, ensure_byte(path),
+                                     ctypes.c_int16(repl))
+        return out == 0
+    
+    def mv(self, path1, path2):
+        out = lib.hdfsRename(self._handle, ensure_byte(path1), ensure_byte(path2))
+        return out == 0
 
+    def rm(self, path, recursive=True):
+        out = lib.hdfsDelete(self._handle, ensure_byte(path), recursive)
+        return out == 0
+    
+    def exists(self, path):
+        out = lib.hdfsExists(self._handle, ensure_byte(path) )
+        return out == 0
+
+def struct_to_dict(s):
+    return dict((name, getattr(s, name)) for (name, p) in s._fields_)
 
 class BlockLocation(ctypes.Structure):
     _fields_ = [('corrupt', ctypes.c_int),
@@ -150,7 +181,6 @@ class BlockLocation(ctypes.Structure):
                 ('length', ctypes.c_int64),
                 ('offset', ctypes.c_int64)]
 lib.hdfsGetFileBlockLocations.restype = ctypes.POINTER(BlockLocation)
-
 
 class FileInfo(ctypes.Structure):
     _fields_ = [('kind', ctypes.c_int8),
@@ -165,6 +195,7 @@ class FileInfo(ctypes.Structure):
                 ('last_access', ctypes.c_int64),  #time_t, could be 32bit               
                 ]
 lib.hdfsGetPathInfo.restype = ctypes.POINTER(FileInfo)
+lib.hdfsListDirectory.restype = ctypes.POINTER(FileInfo)
 
 class HDFile():
     _handle = None
@@ -187,7 +218,7 @@ class HDFile():
             raise IOError("File open failed")
         self._handle = out
     
-    def read(self, length):
+    def read(self, length=2**16):
         assert lib.hdfsFileIsOpenForRead(self._handle), 'File not read mode'
         p = ctypes.create_string_buffer(length)
         ret = lib.hdfsRead(self._fs, self._handle, p, ctypes.c_int32(length))
@@ -228,17 +259,25 @@ class HDFile():
         self.close()
 
     def __repr__(self):
-        return 'hdfs://%s:%s%s, mode %s' % (self.fs.host, self.fs.port,
+        return 'hdfs://%s:%s%s, %s' % (self.fs.host, self.fs.port,
                                             self.path, self.mode)
 
 def test():
     fs = HDFileSystem()
     fs.connect()
     print(fs)
-    f = fs.open('/newtest', 'w', repl=2)
+    f = fs.open('/newtest', 'w', repl=1)
     print(f)
-    f.write(b'a' * (129 * 2**20))
+    import time
+    data = b'a' * (1024 * 2**20)
+    t0 = time.time()
+    f.write(data)
     f.close()
+    t1 = time.time()
+    print(t1 - t0)
+    f = fs.open('/newtest', 'r')
     print(f)
+    f.read((1024 * 2**20))
+    print(time.time() - t1)
     print(subprocess.check_output("hadoop fs -ls /newtest", shell=True))
     print(f.get_block_locs())
