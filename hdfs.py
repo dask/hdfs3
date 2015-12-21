@@ -126,8 +126,9 @@ class HDFileSystem():
                          'offset': block.offset})
         lib.hdfsFreeFileBlockLocations(out, nblocks)
         return locs
-    
+
     def info(self, path):
+        "File information"
         fi = lib.hdfsGetPathInfo(self._handle, ensure_byte(path)).contents
         out = struct_to_dict(fi)
         lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
@@ -162,12 +163,30 @@ class HDFileSystem():
         return out == 0
 
     def rm(self, path, recursive=True):
+        "Use recursive for `rm -r`, i.e., delete directory and contents"
         out = lib.hdfsDelete(self._handle, ensure_byte(path), recursive)
         return out == 0
     
     def exists(self, path):
         out = lib.hdfsExists(self._handle, ensure_byte(path) )
         return out == 0
+    
+    def truncate(self, path, pos):
+        # Does not appear to ever succeed
+        out = lib.hdfsTruncate(self._handle, ensure_byte(path),
+                               ctypes.c_int64(pos), 0)
+        return out == 0
+    
+    def chmod(self, path, mode):
+        "Mode in numerical format (give as octal, if convenient)"
+        out = lib.hdfsChmod(self._handle, ensure_byte(path), ctypes.c_short(mode))
+        return out == 0
+    
+    def chown(self, path, owner, group):
+        out = lib.hdfsChown(self._handle, ensure_byte(path), ensure_byte(owner),
+                            ensure_byte(group))
+        return out == 0
+
 
 def struct_to_dict(s):
     return dict((name, getattr(s, name)) for (name, p) in s._fields_)
@@ -210,7 +229,7 @@ class HDFile():
         self.path = path
         self.repl = repl
         self._fs = fs._handle
-        m = {'w': 1, 'r': 0}[mode]
+        m = {'w': 1, 'r': 0, 'a': 1025}[mode]
         self.mode = mode
         out = lib.hdfsOpenFile(self._fs, ensure_byte(path), m, buff,
                             ctypes.c_short(repl), ctypes.c_int64(offset))
@@ -219,6 +238,7 @@ class HDFile():
         self._handle = out
     
     def read(self, length=2**16):
+        "Read, in chunks no bigger than the native filesystem (e.g., 64kb)"
         assert lib.hdfsFileIsOpenForRead(self._handle), 'File not read mode'
         p = ctypes.create_string_buffer(length)
         ret = lib.hdfsRead(self._fs, self._handle, p, ctypes.c_int32(length))
@@ -237,6 +257,10 @@ class HDFile():
         out = lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(loc))
         if out == -1:
             raise IOError('Seek Failed')
+    
+    def info(self):
+        "filesystem metadata about this file"
+        return self.fs.info(self.path)
     
     def write(self, data):
         data = ensure_byte(data)
@@ -277,7 +301,9 @@ def test():
     print(t1 - t0)
     f = fs.open('/newtest', 'r')
     print(f)
-    f.read((1024 * 2**20))
+    out = 1
+    while out:
+        out = f.read(2**16)
     print(time.time() - t1)
     print(subprocess.check_output("hadoop fs -ls /newtest", shell=True))
     print(f.get_block_locs())
