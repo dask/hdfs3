@@ -289,21 +289,22 @@ class HDFile():
 def test():
     fs = HDFileSystem()
     fs.connect()
-    print(fs)
     f = fs.open('/newtest', 'w', repl=1)
-    print(f)
     import time
     data = b'a' * (1024 * 2**20)
     t0 = time.time()
     f.write(data)
     f.close()
     t1 = time.time()
-    print(t1 - t0)
     f = fs.open('/newtest', 'r')
-    print(f)
     out = 1
     while out:
         out = f.read(2**16)
+    print(fs)
+    print(f)
+    print(fs.info(f.path))
+    print(t1 - t0)
     print(time.time() - t1)
     print(subprocess.check_output("hadoop fs -ls /newtest", shell=True))
     print(f.get_block_locs())
+    fs.rm(f.path)
