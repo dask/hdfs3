@@ -50,6 +50,7 @@ class HDFileSystem():
     token = None
     pars = {}
     _token = None  # Delegation token (generated)
+    autoconnect = True
     
     def __init__(self, **kwargs):
         """
@@ -71,6 +72,8 @@ class HDFileSystem():
         for arg in kwargs:
             setattr(self, arg, kwargs[arg])
         # self.__dict__.update(kwargs)
+        if self.autoconnect:
+            self.connect()
     
     def connect(self):
         assert self._handle is None, "Already connected"
@@ -240,6 +243,9 @@ class HDFile():
     def read(self, length=2**16):
         "Read, in chunks no bigger than the native filesystem (e.g., 64kb)"
         assert lib.hdfsFileIsOpenForRead(self._handle), 'File not read mode'
+        # TODO: read in chunks greater than block size by multiple
+        # calls to read
+        # TODO: consider tell() versuss filesize to determine bytes available.
         p = ctypes.create_string_buffer(length)
         ret = lib.hdfsRead(self._fs, self._handle, p, ctypes.c_int32(length))
         if ret >= 0:
@@ -285,6 +291,12 @@ class HDFile():
     def __repr__(self):
         return 'hdfs://%s:%s%s, %s' % (self.fs.host, self.fs.port,
                                             self.path, self.mode)
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, *args):
+        self.close()
 
 def test():
     fs = HDFileSystem()
