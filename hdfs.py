@@ -115,7 +115,8 @@ class HDFileSystem():
         "Fetch physical locations of blocks"
         assert self._handle, "Filesystem not connected"
         fi = self.info(path)
-        length = length or fi['size']
+        start = int(start) or 0
+        length = int(length) or fi['size']
         nblocks = ctypes.c_int(0)
         out = lib.hdfsGetFileBlockLocations(self._handle, ensure_byte(path),
                                 ctypes.c_int64(start), ctypes.c_int64(length),
@@ -158,7 +159,7 @@ class HDFileSystem():
         
     def set_replication(self, path, repl):
         out = lib.hdfsSetReplication(self._handle, ensure_byte(path),
-                                     ctypes.c_int16(repl))
+                                     ctypes.c_int16(int(repl)))
         return out == 0
     
     def mv(self, path1, path2):
@@ -167,7 +168,7 @@ class HDFileSystem():
 
     def rm(self, path, recursive=True):
         "Use recursive for `rm -r`, i.e., delete directory and contents"
-        out = lib.hdfsDelete(self._handle, ensure_byte(path), recursive)
+        out = lib.hdfsDelete(self._handle, ensure_byte(path), bool(recursive))
         return out == 0
     
     def exists(self, path):
@@ -177,18 +178,28 @@ class HDFileSystem():
     def truncate(self, path, pos):
         # Does not appear to ever succeed
         out = lib.hdfsTruncate(self._handle, ensure_byte(path),
-                               ctypes.c_int64(pos), 0)
+                               ctypes.c_int64(int(pos)), 0)
         return out == 0
     
     def chmod(self, path, mode):
         "Mode in numerical format (give as octal, if convenient)"
-        out = lib.hdfsChmod(self._handle, ensure_byte(path), ctypes.c_short(mode))
+        out = lib.hdfsChmod(self._handle, ensure_byte(path), ctypes.c_short(int(mode)))
         return out == 0
     
     def chown(self, path, owner, group):
         out = lib.hdfsChown(self._handle, ensure_byte(path), ensure_byte(owner),
                             ensure_byte(group))
         return out == 0
+    
+    def cat(self, path):
+        buff = b''
+        with self.open(path, 'r') as f:
+            out = 1
+            while out:
+                out = f.read(2**16)
+                buff = buff + out
+        return buff
+
 
 
 def struct_to_dict(s):
