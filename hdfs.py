@@ -117,6 +117,8 @@ class HDFileSystem():
         if isinstance(deep, str):
             deep = deep=='True'
         fi = self.ls(path)
+        if len(fi) == 0:
+            raise IOError('Not Found')
         if deep:
             for apath in fi:
                 if apath['kind'] == 68:  # directory
@@ -134,7 +136,7 @@ class HDFileSystem():
         "Fetch physical locations of blocks"
         assert self._handle, "Filesystem not connected"
         start = int(start) or 0
-        length = int(length) or self.du(path)
+        length = int(length) or self.info(path)['size']
         nblocks = ctypes.c_int(0)
         out = lib.hdfsGetFileBlockLocations(self._handle, ensure_byte(path),
                                 ctypes.c_int64(start), ctypes.c_int64(length),
