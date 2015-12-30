@@ -48,5 +48,7 @@ if __name__ == "__main__":
     if isinstance(out, list):
         for l in out:
             print(l)
+    elif hasattr(out, 'decode'):
+        print(out.decode())
     elif out is not None:
         print(out)
