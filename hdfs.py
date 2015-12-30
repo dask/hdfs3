@@ -111,12 +111,30 @@ class HDFileSystem():
         assert self._handle, "Filesystem not connected"
         return HDFile(self, path, mode, **kwargs)
         
+    def du(self, path, total=False, deep=False):
+        if isinstance(total, str):
+            total = total=='True'
+        if isinstance(deep, str):
+            deep = deep=='True'
+        fi = self.ls(path)
+        if deep:
+            for apath in fi:
+                if apath['kind'] == 68:  # directory
+                    fi.extend(self.ls(apath['name']))
+        if total:
+            return {path: sum(f['size'] for f in fi)}
+        return {p['name']: p['size'] for p in fi}
+    
+    def df(self):
+        cap = lib.hdfsGetCapacity(self._handle)
+        used = lib.hdfsGetUsed(self._handle)
+        return {'capacity': cap, 'used': used, 'free%': 100*(cap-used)/cap}
+    
     def get_block_locations(self, path, start=0, length=None):
         "Fetch physical locations of blocks"
         assert self._handle, "Filesystem not connected"
-        fi = self.info(path)
         start = int(start) or 0
-        length = int(length) or fi['size']
+        length = int(length) or self.du(path)
         nblocks = ctypes.c_int(0)
         out = lib.hdfsGetFileBlockLocations(self._handle, ensure_byte(path),
                                 ctypes.c_int64(start), ctypes.c_int64(length),
@@ -216,6 +234,14 @@ class HDFileSystem():
                     if len(out) == 0:
                         break
                     f.write(out)
+    
+    def tail(self, path, size=None):
+        size = int(size) or 1024
+        length = self.du(path)
+        if size > length:
+            return self.cat(path)
+        with self.open(path, 'r', offset=length-size) as f:
+            return f.read(size)
 
 
 def struct_to_dict(s):
@@ -262,10 +288,12 @@ class HDFile():
         m = {'w': 1, 'r': 0, 'a': 1025}[mode]
         self.mode = mode
         out = lib.hdfsOpenFile(self._fs, ensure_byte(path), m, buff,
-                            ctypes.c_short(repl), ctypes.c_int64(offset))
+                            ctypes.c_short(repl), ctypes.c_int64(0))
         if out == 0:
             raise IOError("File open failed")
         self._handle = out
+        if mode=='r' and offset > 0:
+            self.seek(offset)
     
     def read(self, length=2**16):
         "Read, in chunks no bigger than the native filesystem (e.g., 64kb)"
