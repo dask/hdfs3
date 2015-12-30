@@ -218,15 +218,26 @@ class HDFileSystem():
                 buff = buff + out
         return buff
     
-    def to_local(self, path, filename):
+    def get(self, path, filename):
         with self.open(path, 'r') as f:
             with open(filename, 'wb') as f2:
                 out = 1
                 while out:
                     out = f.read()
                     f2.write(out)
+    
+    def getmerge(self, path, filename):
+        files = self.ls(path)
+        with open(filename, 'wb') as f2:
+            for apath in files:
+                with self.open(apath['name'], 'r') as f:
+                    out = 1
+                    while out:
+                        out = f.read()
+                        f2.write(out)
+        
 
-    def to_hdfs(self, filename, path, chunk=2**16):
+    def put(self, filename, path, chunk=2**16):
         with self.open(path, 'w') as f:
             with open(filename, 'rb') as f2:
                 while True:

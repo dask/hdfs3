@@ -30,7 +30,7 @@ if args.verbose > 0:
 
 commands = ['ls', 'cat', 'info', 'mkdir', 'rmdir', 'rm', 'mv', 'exists',
             'chmod', 'chmown', 'set_replication', 'get_block_locations',
-            'to_local', 'to_hdfs', 'du', 'tail', 'df']
+            'get', 'getmerge', 'put', 'du', 'tail', 'df']
 
 if __name__ == "__main__":
     if args.command not in commands:
