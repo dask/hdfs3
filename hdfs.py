@@ -300,18 +300,16 @@ class HDFile():
 
 def test():
     fs = HDFileSystem()
-    fs.connect()
-    f = fs.open('/newtest', 'w', repl=1)
-    import time
-    data = b'a' * (1024 * 2**20)
-    t0 = time.time()
-    f.write(data)
-    f.close()
+    with fs.open('/newtest', 'w', repl=1) as f:
+        import time
+        data = b'a' * (1024 * 2**20)
+        t0 = time.time()
+        f.write(data)
     t1 = time.time()
-    f = fs.open('/newtest', 'r')
-    out = 1
-    while out:
-        out = f.read(2**16)
+    with fs.open('/newtest', 'r') as f:
+        out = 1
+        while out:
+            out = f.read(2**16)
     print(fs)
     print(f)
     print(fs.info(f.path))
