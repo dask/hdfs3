@@ -130,7 +130,7 @@ class HDFileSystem():
         used = lib.hdfsGetUsed(self._handle)
         return {'capacity': cap, 'used': used, 'free%': 100*(cap-used)/cap}
     
-    def get_block_locations(self, path, start=0, length=None):
+    def get_block_locations(self, path, start=0, length=0):
         "Fetch physical locations of blocks"
         assert self._handle, "Filesystem not connected"
         start = int(start) or 0
