@@ -205,11 +205,13 @@ class HDFileSystem():
         return out == 0
     
     def chown(self, path, owner, group):
+        "Change owner/group"
         out = lib.hdfsChown(self._handle, ensure_byte(path), ensure_byte(owner),
                             ensure_byte(group))
         return out == 0
     
     def cat(self, path):
+        "Return contents of file"
         buff = b''
         with self.open(path, 'r') as f:
             out = 1
@@ -219,6 +221,7 @@ class HDFileSystem():
         return buff
     
     def get(self, path, filename):
+        "Copy HDFS file to local"
         with self.open(path, 'r') as f:
             with open(filename, 'wb') as f2:
                 out = 1
@@ -227,6 +230,7 @@ class HDFileSystem():
                     f2.write(out)
     
     def getmerge(self, path, filename):
+        "Concat all files in path (a directory) to output file"
         files = self.ls(path)
         with open(filename, 'wb') as f2:
             for apath in files:
@@ -238,6 +242,7 @@ class HDFileSystem():
         
 
     def put(self, filename, path, chunk=2**16):
+        "Copy local file to path in HDFS"
         with self.open(path, 'w') as f:
             with open(filename, 'rb') as f2:
                 while True:
@@ -247,12 +252,17 @@ class HDFileSystem():
                     f.write(out)
     
     def tail(self, path, size=None):
+        "Return last size bytes of file"
         size = int(size) or 1024
         length = self.du(path)
         if size > length:
             return self.cat(path)
         with self.open(path, 'r', offset=length-size) as f:
             return f.read(size)
+    
+    def touch(self, path):
+        "Create zero-length file"
+        self.open(path, 'w').close()
 
 
 def struct_to_dict(s):
