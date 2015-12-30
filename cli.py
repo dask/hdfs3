@@ -28,7 +28,8 @@ if args.verbose > 0:
     print(args)
 
 commands = ['ls', 'cat', 'info', 'mkdir', 'rmdir', 'rm', 'mv', 'exists',
-            'chmod', 'chmown', 'set_replication', 'get_block_locations']
+            'chmod', 'chmown', 'set_replication', 'get_block_locations',
+            'to_local', 'to_hdfs']
 
 if __name__ == "__main__":
     if args.command not in commands:
