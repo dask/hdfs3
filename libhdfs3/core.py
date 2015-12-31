@@ -383,6 +383,7 @@ class HDFile():
     def __exit__(self, *args):
         self.close()
 
+
 def test():
     fs = HDFileSystem()
     with fs.open('/newtest', 'w', repl=1) as f:
