@@ -51,21 +51,21 @@ class HDFileSystem():
     pars = {}
     _token = None  # Delegation token (generated)
     autoconnect = True
-    
+
     def __init__(self, **kwargs):
         """
         Parameters
         ----------
-        
+
         host : str (default from config files)
             namenode (name or IP)
-            
+
         port : int (9000)
             connection port
-            
+
         user, ticket_cache, token : str
             kerberos things
-            
+
         pars : {str: str}
             other parameters for hadoop
         """
@@ -74,7 +74,7 @@ class HDFileSystem():
         # self.__dict__.update(kwargs)
         if self.autoconnect:
             self.connect()
-    
+
     def connect(self):
         assert self._handle is None, "Already connected"
         o = lib.hdfsNewBuilder()
@@ -101,16 +101,16 @@ class HDFileSystem():
             #                                             ensure_byte(self.user))
         else:
             raise RuntimeError('Connection Failed')
-    
+
     def disconnect(self):
         if self._handle:
             lib.hdfsDisconnect(self._handle)
         self._handle = None
-    
+
     def open(self, path, mode='r', **kwargs):
         assert self._handle, "Filesystem not connected"
         return HDFile(self, path, mode, **kwargs)
-        
+
     def du(self, path, total=False, deep=False):
         if isinstance(total, str):
             total = total=='True'
@@ -126,12 +126,12 @@ class HDFileSystem():
         if total:
             return {path: sum(f['size'] for f in fi)}
         return {p['name']: p['size'] for p in fi}
-    
+
     def df(self):
         cap = lib.hdfsGetCapacity(self._handle)
         used = lib.hdfsGetUsed(self._handle)
         return {'capacity': cap, 'used': used, 'free%': 100*(cap-used)/cap}
-    
+
     def get_block_locations(self, path, start=0, length=0):
         "Fetch physical locations of blocks"
         assert self._handle, "Filesystem not connected"
@@ -157,31 +157,31 @@ class HDFileSystem():
         out = struct_to_dict(fi)
         lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
         return out
-    
+
     def ls(self, path):
         num = ctypes.c_int(0)
         fi = lib.hdfsListDirectory(self._handle, ensure_byte(path), ctypes.byref(num))
         out = [struct_to_dict(fi[i]) for i in range(num.value)]
         lib.hdfsFreeFileInfo(fi, num.value)
         return out
-    
+
     def __repr__(self):
         state = ['Disconnected', 'Connected'][self._handle is not None]
         return 'hdfs://%s:%s, %s' % (self.host, self.port, state)
-    
+
     def __del__(self):
         if self._handle:
             self.disconnect()
-    
+
     def mkdir(self, path):
         out = lib.hdfsCreateDirectory(self._handle, ensure_byte(path))
         return out == 0
-        
+
     def set_replication(self, path, repl):
         out = lib.hdfsSetReplication(self._handle, ensure_byte(path),
                                      ctypes.c_int16(int(repl)))
         return out == 0
-    
+
     def mv(self, path1, path2):
         out = lib.hdfsRename(self._handle, ensure_byte(path1), ensure_byte(path2))
         return out == 0
@@ -190,28 +190,28 @@ class HDFileSystem():
         "Use recursive for `rm -r`, i.e., delete directory and contents"
         out = lib.hdfsDelete(self._handle, ensure_byte(path), bool(recursive))
         return out == 0
-    
+
     def exists(self, path):
         out = lib.hdfsExists(self._handle, ensure_byte(path) )
         return out == 0
-    
+
     def truncate(self, path, pos):
         # Does not appear to ever succeed
         out = lib.hdfsTruncate(self._handle, ensure_byte(path),
                                ctypes.c_int64(int(pos)), 0)
         return out == 0
-    
+
     def chmod(self, path, mode):
         "Mode in numerical format (give as octal, if convenient)"
         out = lib.hdfsChmod(self._handle, ensure_byte(path), ctypes.c_short(int(mode)))
         return out == 0
-    
+
     def chown(self, path, owner, group):
         "Change owner/group"
         out = lib.hdfsChown(self._handle, ensure_byte(path), ensure_byte(owner),
                             ensure_byte(group))
         return out == 0
-    
+
     def cat(self, path):
         "Return contents of file"
         buff = b''
@@ -221,7 +221,7 @@ class HDFileSystem():
                 out = f.read(2**16)
                 buff = buff + out
         return buff
-    
+
     def get(self, path, filename):
         "Copy HDFS file to local"
         with self.open(path, 'r') as f:
@@ -230,7 +230,7 @@ class HDFileSystem():
                 while out:
                     out = f.read()
                     f2.write(out)
-    
+
     def getmerge(self, path, filename):
         "Concat all files in path (a directory) to output file"
         files = self.ls(path)
@@ -241,7 +241,7 @@ class HDFileSystem():
                     while out:
                         out = f.read()
                         f2.write(out)
-        
+
 
     def put(self, filename, path, chunk=2**16):
         "Copy local file to path in HDFS"
@@ -252,7 +252,7 @@ class HDFileSystem():
                     if len(out) == 0:
                         break
                     f.write(out)
-    
+
     def tail(self, path, size=None):
         "Return last size bytes of file"
         size = int(size) or 1024
@@ -261,7 +261,7 @@ class HDFileSystem():
             return self.cat(path)
         with self.open(path, 'r', offset=length-size) as f:
             return f.read(size)
-    
+
     def touch(self, path):
         "Create zero-length file"
         self.open(path, 'w').close()
@@ -290,7 +290,7 @@ class FileInfo(ctypes.Structure):
                 ('owner', ctypes.c_char_p),
                 ('group', ctypes.c_char_p),
                 ('permissions', ctypes.c_short),  #view as octal
-                ('last_access', ctypes.c_int64),  #time_t, could be 32bit               
+                ('last_access', ctypes.c_int64),  #time_t, could be 32bit
                 ]
 lib.hdfsGetPathInfo.restype = ctypes.POINTER(FileInfo)
 lib.hdfsListDirectory.restype = ctypes.POINTER(FileInfo)
@@ -301,7 +301,7 @@ class HDFile():
     _fs = None
     path = None
     mode = None
-    
+
     def __init__(self, fs, path, mode, repl=1, offset=0, buff=0):
         "Called by open on a HDFileSystem"
         self.fs = fs
@@ -317,7 +317,7 @@ class HDFile():
         self._handle = out
         if mode=='r' and offset > 0:
             self.seek(offset)
-    
+
     def read(self, length=2**16):
         "Read, in chunks no bigger than the native filesystem (e.g., 64kb)"
         assert lib.hdfsFileIsOpenForRead(self._handle), 'File not read mode'
@@ -330,36 +330,36 @@ class HDFile():
             return p.raw[:ret]
         else:
             raise IOError('Read Failed:', -ret)
-    
+
     def tell(self):
         out = lib.hdfsTell(self._fs, self._handle)
         if out == -1:
             raise IOError('Tell Failed')
         return out
-    
+
     def seek(self, loc):
         out = lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(loc))
         if out == -1:
             raise IOError('Seek Failed')
-    
+
     def info(self):
         "filesystem metadata about this file"
         return self.fs.info(self.path)
-    
+
     def write(self, data):
         data = ensure_byte(data)
         assert lib.hdfsFileIsOpenForWrite(self._handle), 'File not write mode'
         assert lib.hdfsWrite(self._fs, self._handle, data, len(data)) == len(data)
-        
+
     def flush(self):
         lib.hdfsFlush(self._fs, self._handle)
-    
+
     def close(self):
         self.flush()
         lib.hdfsCloseFile(self._fs, self._handle)
         self._handle = None  # libhdfs releases memory
         self.mode = 'closed'
-            
+
     def get_block_locs(self):
         return self.fs.get_block_locations(self.path)
 
@@ -369,10 +369,10 @@ class HDFile():
     def __repr__(self):
         return 'hdfs://%s:%s%s, %s' % (self.fs.host, self.fs.port,
                                             self.path, self.mode)
-    
+
     def __enter__(self):
         return self
-    
+
     def __exit__(self, *args):
         self.close()
 
