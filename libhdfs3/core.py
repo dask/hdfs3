@@ -6,7 +6,8 @@ import sys
 import subprocess
 import warnings
 PY3 = sys.version_info.major > 2
-lib = ctypes.cdll.LoadLibrary('./libhdfs3.so')
+here = os.path.abspath(__file__)
+_lib = ctypes.cdll.Load_library(os.sep.join([here, '_libhdfs3.so']))
 
 
 def get_default_host():
@@ -51,21 +52,21 @@ class HDFileSystem():
     pars = {}
     _token = None  # Delegation token (generated)
     autoconnect = True
-    
+
     def __init__(self, **kwargs):
         """
         Parameters
         ----------
-        
+
         host : str (default from config files)
             namenode (name or IP)
-            
+
         port : int (9000)
             connection port
-            
+
         user, ticket_cache, token : str
             kerberos things
-            
+
         pars : {str: str}
             other parameters for hadoop
         """
@@ -74,43 +75,43 @@ class HDFileSystem():
         # self.__dict__.update(kwargs)
         if self.autoconnect:
             self.connect()
-    
+
     def connect(self):
         assert self._handle is None, "Already connected"
-        o = lib.hdfsNewBuilder()
-        lib.hdfsBuilderSetNameNodePort(o, self.port)
-        lib.hdfsBuilderSetNameNode(o, ensure_byte(self.host))
+        o = _lib.hdfsNewBuilder()
+        _lib.hdfsBuilderSetNameNodePort(o, self.port)
+        _lib.hdfsBuilderSetNameNode(o, ensure_byte(self.host))
         if self.user:
-            lib.hdfsBuilderSetUserName(o, ensure_byte(self.user))
+            _lib.hdfsBuilderSetUserName(o, ensure_byte(self.user))
         if self.ticket_cache:
-            lib.hdfsBuilderSetKerbTicketCachePath(o, ensure_byte(self.ticket_cache))
+            _lib.hdfsBuilderSetKerbTicketCachePath(o, ensure_byte(self.ticket_cache))
         if self.token:
-            lib.hdfsBuilderSetToken(o, ensure_byte(self.token))
+            _lib.hdfsBuilderSetToken(o, ensure_byte(self.token))
         if self.pars:
             for par in self.pars:
                 try:
-                    assert lib.hdfsBuilderConfSetStr(o, ensure_byte(par),
+                    assert _lib.hdfsBuilderConfSetStr(o, ensure_byte(par),
                                           ensure_byte(self.pars(par))) == 0
                 except AssertionError:
                     warnings.warn('Setting conf parameter %s failed' % par)
-        fs = lib.hdfsBuilderConnect(o)
+        fs = _lib.hdfsBuilderConnect(o)
         if fs:
             self._handle = fs
             #if self.token:   # TODO: find out what a delegation token is
-            #    self._token = lib.hdfsGetDelegationToken(self._handle,
+            #    self._token = _lib.hdfsGetDelegationToken(self._handle,
             #                                             ensure_byte(self.user))
         else:
             raise RuntimeError('Connection Failed')
-    
+
     def disconnect(self):
         if self._handle:
-            lib.hdfsDisconnect(self._handle)
+            _lib.hdfsDisconnect(self._handle)
         self._handle = None
-    
+
     def open(self, path, mode='r', **kwargs):
         assert self._handle, "Filesystem not connected"
         return HDFile(self, path, mode, **kwargs)
-        
+
     def du(self, path, total=False, deep=False):
         if isinstance(total, str):
             total = total=='True'
@@ -126,19 +127,19 @@ class HDFileSystem():
         if total:
             return {path: sum(f['size'] for f in fi)}
         return {p['name']: p['size'] for p in fi}
-    
+
     def df(self):
-        cap = lib.hdfsGetCapacity(self._handle)
-        used = lib.hdfsGetUsed(self._handle)
+        cap = _lib.hdfsGetCapacity(self._handle)
+        used = _lib.hdfsGetUsed(self._handle)
         return {'capacity': cap, 'used': used, 'free%': 100*(cap-used)/cap}
-    
+
     def get_block_locations(self, path, start=0, length=0):
         "Fetch physical locations of blocks"
         assert self._handle, "Filesystem not connected"
         start = int(start) or 0
         length = int(length) or self.info(path)['size']
         nblocks = ctypes.c_int(0)
-        out = lib.hdfsGetFileBlockLocations(self._handle, ensure_byte(path),
+        out = _lib.hdfsGetFileBlockLocations(self._handle, ensure_byte(path),
                                 ctypes.c_int64(start), ctypes.c_int64(length),
                                 ctypes.byref(nblocks))
         locs = []
@@ -148,70 +149,70 @@ class HDFileSystem():
                      range(block.numOfNodes)]
             locs.append({'hosts': hosts, 'length': block.length,
                          'offset': block.offset})
-        lib.hdfsFreeFileBlockLocations(out, nblocks)
+        _lib.hdfsFreeFileBlockLocations(out, nblocks)
         return locs
 
     def info(self, path):
         "File information"
-        fi = lib.hdfsGetPathInfo(self._handle, ensure_byte(path)).contents
+        fi = _lib.hdfsGetPathInfo(self._handle, ensure_byte(path)).contents
         out = struct_to_dict(fi)
-        lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
+        _lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
         return out
-    
+
     def ls(self, path):
         num = ctypes.c_int(0)
-        fi = lib.hdfsListDirectory(self._handle, ensure_byte(path), ctypes.byref(num))
+        fi = _lib.hdfsListDirectory(self._handle, ensure_byte(path), ctypes.byref(num))
         out = [struct_to_dict(fi[i]) for i in range(num.value)]
-        lib.hdfsFreeFileInfo(fi, num.value)
+        _lib.hdfsFreeFileInfo(fi, num.value)
         return out
-    
+
     def __repr__(self):
         state = ['Disconnected', 'Connected'][self._handle is not None]
         return 'hdfs://%s:%s, %s' % (self.host, self.port, state)
-    
+
     def __del__(self):
         if self._handle:
             self.disconnect()
-    
+
     def mkdir(self, path):
-        out = lib.hdfsCreateDirectory(self._handle, ensure_byte(path))
+        out = _lib.hdfsCreateDirectory(self._handle, ensure_byte(path))
         return out == 0
-        
+
     def set_replication(self, path, repl):
-        out = lib.hdfsSetReplication(self._handle, ensure_byte(path),
+        out = _lib.hdfsSetReplication(self._handle, ensure_byte(path),
                                      ctypes.c_int16(int(repl)))
         return out == 0
-    
+
     def mv(self, path1, path2):
-        out = lib.hdfsRename(self._handle, ensure_byte(path1), ensure_byte(path2))
+        out = _lib.hdfsRename(self._handle, ensure_byte(path1), ensure_byte(path2))
         return out == 0
 
     def rm(self, path, recursive=True):
         "Use recursive for `rm -r`, i.e., delete directory and contents"
-        out = lib.hdfsDelete(self._handle, ensure_byte(path), bool(recursive))
+        out = _lib.hdfsDelete(self._handle, ensure_byte(path), bool(recursive))
         return out == 0
-    
+
     def exists(self, path):
-        out = lib.hdfsExists(self._handle, ensure_byte(path) )
+        out = _lib.hdfsExists(self._handle, ensure_byte(path) )
         return out == 0
-    
+
     def truncate(self, path, pos):
         # Does not appear to ever succeed
-        out = lib.hdfsTruncate(self._handle, ensure_byte(path),
+        out = _lib.hdfsTruncate(self._handle, ensure_byte(path),
                                ctypes.c_int64(int(pos)), 0)
         return out == 0
-    
+
     def chmod(self, path, mode):
         "Mode in numerical format (give as octal, if convenient)"
-        out = lib.hdfsChmod(self._handle, ensure_byte(path), ctypes.c_short(int(mode)))
+        out = _lib.hdfsChmod(self._handle, ensure_byte(path), ctypes.c_short(int(mode)))
         return out == 0
-    
+
     def chown(self, path, owner, group):
         "Change owner/group"
-        out = lib.hdfsChown(self._handle, ensure_byte(path), ensure_byte(owner),
+        out = _lib.hdfsChown(self._handle, ensure_byte(path), ensure_byte(owner),
                             ensure_byte(group))
         return out == 0
-    
+
     def cat(self, path):
         "Return contents of file"
         buff = b''
@@ -221,7 +222,7 @@ class HDFileSystem():
                 out = f.read(2**16)
                 buff = buff + out
         return buff
-    
+
     def get(self, path, filename):
         "Copy HDFS file to local"
         with self.open(path, 'r') as f:
@@ -230,7 +231,7 @@ class HDFileSystem():
                 while out:
                     out = f.read()
                     f2.write(out)
-    
+
     def getmerge(self, path, filename):
         "Concat all files in path (a directory) to output file"
         files = self.ls(path)
@@ -241,7 +242,7 @@ class HDFileSystem():
                     while out:
                         out = f.read()
                         f2.write(out)
-        
+
 
     def put(self, filename, path, chunk=2**16):
         "Copy local file to path in HDFS"
@@ -252,7 +253,7 @@ class HDFileSystem():
                     if len(out) == 0:
                         break
                     f.write(out)
-    
+
     def tail(self, path, size=None):
         "Return last size bytes of file"
         size = int(size) or 1024
@@ -261,7 +262,7 @@ class HDFileSystem():
             return self.cat(path)
         with self.open(path, 'r', offset=length-size) as f:
             return f.read(size)
-    
+
     def touch(self, path):
         "Create zero-length file"
         self.open(path, 'w').close()
@@ -278,7 +279,7 @@ class BlockLocation(ctypes.Structure):
                 ('topologyPaths', ctypes.POINTER(ctypes.c_char_p)),
                 ('length', ctypes.c_int64),
                 ('offset', ctypes.c_int64)]
-lib.hdfsGetFileBlockLocations.restype = ctypes.POINTER(BlockLocation)
+_lib.hdfsGetFileBlockLocations.restype = ctypes.POINTER(BlockLocation)
 
 class FileInfo(ctypes.Structure):
     _fields_ = [('kind', ctypes.c_int8),
@@ -290,10 +291,10 @@ class FileInfo(ctypes.Structure):
                 ('owner', ctypes.c_char_p),
                 ('group', ctypes.c_char_p),
                 ('permissions', ctypes.c_short),  #view as octal
-                ('last_access', ctypes.c_int64),  #time_t, could be 32bit               
+                ('last_access', ctypes.c_int64),  #time_t, could be 32bit
                 ]
-lib.hdfsGetPathInfo.restype = ctypes.POINTER(FileInfo)
-lib.hdfsListDirectory.restype = ctypes.POINTER(FileInfo)
+_lib.hdfsGetPathInfo.restype = ctypes.POINTER(FileInfo)
+_lib.hdfsListDirectory.restype = ctypes.POINTER(FileInfo)
 
 class HDFile():
     _handle = None
@@ -312,28 +313,33 @@ class HDFile():
         self._fs = fs._handle
         m = {'w': 1, 'r': 0, 'a': 1025}[mode]
         self.mode = mode
-        out = lib.hdfsOpenFile(self._fs, ensure_byte(path), m, buff,
+        out = _lib.hdfsOpenFile(self._fs, ensure_byte(path), m, buff,
                             ctypes.c_short(repl), ctypes.c_int64(0))
         if out == 0:
             raise IOError("File open failed")
         self._handle = out
         if mode=='r' and offset > 0:
             self.seek(offset)
-    
+
     def read(self, length=2**16):
-        "Read, binary chunks no bigger than the native filesystem (e.g., 64kb)"
-        assert lib.hdfsFileIsOpenForRead(self._handle), 'File not read mode'
-        p = ctypes.create_string_buffer(length)
-        ret = lib.hdfsRead(self._fs, self._handle, p, ctypes.c_int32(length))
-        if ret >= 0:
-            return p.raw[:ret]
-        else:
-            raise IOError('Read Failed:', -ret)
+        """ Read bytes from open file """
+        assert _lib.hdfsFileIsOpenForRead(self._handle), 'File not read mode'
+        buffers = []
+
+        while length:
+            bufsize = min(2**16, length)
+            p = ctypes.create_string_buffer(bufsize)
+            ret = _lib.hdfsRead(self._fs, self._handle, p, ctypes.c_int32(bufsize))
+            if ret >= 0:
+                buffers.append(p.raw[:ret])
+                length -= ret
+            else:
+                raise IOError('Read Failed:', -ret)
+
+        return b''.join(buffers)
 
     def readline(self):
         "Read a buffered line, text mode."
-        if not hasattr(self, 'buffer'):
-            raise ValueError('File not in text mode')
         lines = getattr(self, 'lines', [])
         if len(lines) < 1:
             buff = self.read()
@@ -361,34 +367,34 @@ class HDFile():
         return list(self)
     
     def tell(self):
-        out = lib.hdfsTell(self._fs, self._handle)
+        out = _lib.hdfsTell(self._fs, self._handle)
         if out == -1:
             raise IOError('Tell Failed')
         return out
-    
+
     def seek(self, loc):
-        out = lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(loc))
+        out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(loc))
         if out == -1:
             raise IOError('Seek Failed')
-    
+
     def info(self):
         "filesystem metadata about this file"
         return self.fs.info(self.path)
-    
+
     def write(self, data):
         data = ensure_byte(data)
-        assert lib.hdfsFileIsOpenForWrite(self._handle), 'File not write mode'
-        assert lib.hdfsWrite(self._fs, self._handle, data, len(data)) == len(data)
-        
+        assert _lib.hdfsFileIsOpenForWrite(self._handle), 'File not write mode'
+        assert _lib.hdfsWrite(self._fs, self._handle, data, len(data)) == len(data)
+
     def flush(self):
-        lib.hdfsFlush(self._fs, self._handle)
-    
+        _lib.hdfsFlush(self._fs, self._handle)
+
     def close(self):
         self.flush()
-        lib.hdfsCloseFile(self._fs, self._handle)
-        self._handle = None  # libhdfs releases memory
+        _lib.hdfsCloseFile(self._fs, self._handle)
+        self._handle = None  # _libhdfs releases memory
         self.mode = 'closed'
-            
+
     def get_block_locs(self):
         return self.fs.get_block_locations(self.path)
 
@@ -398,12 +404,13 @@ class HDFile():
     def __repr__(self):
         return 'hdfs://%s:%s%s, %s' % (self.fs.host, self.fs.port,
                                             self.path, self.mode)
-    
+
     def __enter__(self):
         return self
-    
+
     def __exit__(self, *args):
         self.close()
+
 
 def test():
     fs = HDFileSystem()

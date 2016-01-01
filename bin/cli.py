@@ -1,13 +1,11 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Created on Wed Dec 30 13:58:24 2015
-
-@author: mdurant
+Command-line HDFS via python
 """
 
 import argparse
-import hdfs
+import libhdfs3.core as hdfs
 import sys
 import inspect
 
