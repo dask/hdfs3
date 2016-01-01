@@ -330,8 +330,11 @@ class HDFile():
             bufsize = min(2**16, length)
             p = ctypes.create_string_buffer(bufsize)
             ret = _lib.hdfsRead(self._fs, self._handle, p, ctypes.c_int32(bufsize))
-            if ret >= 0:
-                buffers.append(p.raw[:ret])
+            if ret == 0:
+                break
+            if ret > 0:
+                if ret < bufsize:
+                    buffers.append(p.raw[:ret])
                 length -= ret
             else:
                 raise IOError('Read Failed:', -ret)
@@ -421,9 +424,7 @@ def test():
         f.write(data)
     t1 = time.time()
     with fs.open('/newtest', 'r') as f:
-        out = 1
-        while out:
-            out = f.read(2**16)
+        out = f.read(len(data))
     print(fs)
     print(f)
     print(fs.info(f.path))
