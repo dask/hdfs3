@@ -6,7 +6,7 @@ import sys
 import subprocess
 import warnings
 PY3 = sys.version_info.major > 2
-here = os.path.abspath(__file__)
+here = os.path.dirname(os.path.abspath(__file__))
 _lib = ctypes.cdll.Load_library(os.sep.join([here, '_libhdfs3.so']))
 
 
