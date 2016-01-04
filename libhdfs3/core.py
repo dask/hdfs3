@@ -162,7 +162,8 @@ class HDFileSystem():
 
     def glob(self, path):
         allfiles = self.du('/', False, True).keys()
-        return fnmatch.filter(allfiles, path)
+        out = [f for f in allfiles if fnmatch.fnmatch(f.decode(), path)]
+        return out
 
     def ls(self, path):
         num = ctypes.c_int(0)
