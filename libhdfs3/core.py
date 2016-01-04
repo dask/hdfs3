@@ -167,6 +167,8 @@ class HDFileSystem():
         return out
 
     def glob(self, path):
+        if "*" not in path:
+            path = path + "*"
         allfiles = self.du('/', False, True).keys()
         out = [f for f in allfiles if fnmatch.fnmatch(ensure_string(f), path)]
         return out
