@@ -169,7 +169,12 @@ class HDFileSystem():
     def glob(self, path):
         if "*" not in path:
             path = path + "*"
-        allfiles = self.du('/', False, True).keys()
+        if '/' in path[:path.index('*')]:
+            ind = path[:path.index('*')].rindex('/')
+            root = path[:ind+1]
+        else:
+            root = '/'
+        allfiles = self.du(root, False, True).keys()
         out = [f for f in allfiles if fnmatch.fnmatch(ensure_string(f), path)]
         return out
 
