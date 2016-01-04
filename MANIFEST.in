@@ -1,4 +1,4 @@
-recursive-include libhdfs3 *.py
+recursive-include hdfs3 *.py
 
 include bin/cli
 include setup.py
