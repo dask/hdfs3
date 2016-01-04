@@ -5,6 +5,7 @@ import ctypes
 import sys
 import subprocess
 import warnings
+import fnmatch
 PY3 = sys.version_info.major > 2
 here = os.path.dirname(os.path.abspath(__file__))
 _lib = ctypes.cdll.LoadLibrary(os.sep.join([here, 'libhdfs3.so']))
@@ -158,6 +159,10 @@ class HDFileSystem():
         out = struct_to_dict(fi)
         _lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
         return out
+
+    def glob(self, path):
+        allfiles = self.du('/', False, True).keys()
+        return fnmatch.filter(allfiles, path)
 
     def ls(self, path):
         num = ctypes.c_int(0)
