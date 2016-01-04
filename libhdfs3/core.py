@@ -32,6 +32,12 @@ def ensure_byte(s):
         return s
 
 
+def ensure_string(s):
+    if hasattr(s, 'decode'):
+        return s.decode()
+    return s
+
+
 def init_kerb():
     """Uses system kinit to find credentials. Set up by editing
     krb5.conf"""
@@ -162,7 +168,7 @@ class HDFileSystem():
 
     def glob(self, path):
         allfiles = self.du('/', False, True).keys()
-        out = [f for f in allfiles if fnmatch.fnmatch(f.decode(), path)]
+        out = [f for f in allfiles if fnmatch.fnmatch(ensure_string(f), path)]
         return out
 
     def ls(self, path):
