@@ -1,0 +1,26 @@
+language: python
+
+python:
+  - 2.7
+
+sudo: true
+
+services:
+  - docker
+
+before_install:
+  - pwd
+  - pushd continuous_integration
+  - docker build -t libhdfs3.hdfs .
+  - popd
+  - docker run -d -p 8020:8020 -p 50070:50070 -v $(pwd):/hdfs3 libhdfs3.hdfs
+  - export CONTAINER_ID=$(docker ps -l -q)
+  - sleep 60  # Wait for namenode and datanode
+
+install:
+  - pwd
+  - docker exec -it $CONTAINER_ID python setup.py install
+
+script:
+  - pwd
+  - docker exec -it $CONTAINER_ID py.test hdfs3 -s -vv
