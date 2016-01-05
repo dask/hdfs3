@@ -5,6 +5,7 @@ import ctypes
 import sys
 import subprocess
 import warnings
+import fnmatch
 PY3 = sys.version_info.major > 2
 here = os.path.dirname(os.path.abspath(__file__))
 _lib = ctypes.cdll.LoadLibrary(os.sep.join([here, 'libhdfs3.so']))
@@ -29,6 +30,12 @@ def ensure_byte(s):
             raise ValueError('Could not convert %s to bytes' % s)
     else:  # in PY2, strings are fine for ctypes
         return s
+
+
+def ensure_string(s):
+    if hasattr(s, 'decode'):
+        return s.decode()
+    return s
 
 
 def init_kerb():
@@ -157,6 +164,18 @@ class HDFileSystem():
         fi = _lib.hdfsGetPathInfo(self._handle, ensure_byte(path)).contents
         out = struct_to_dict(fi)
         _lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
+        return out
+
+    def glob(self, path):
+        if "*" not in path:
+            path = path + "*"
+        if '/' in path[:path.index('*')]:
+            ind = path[:path.index('*')].rindex('/')
+            root = path[:ind+1]
+        else:
+            root = '/'
+        allfiles = self.du(root, False, True).keys()
+        out = [f for f in allfiles if fnmatch.fnmatch(ensure_string(f), path)]
         return out
 
     def ls(self, path):
