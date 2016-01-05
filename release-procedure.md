@@ -1,4 +1,4 @@
-1.  Update version number in setup.py and libhdfs3/__init__.py.  Commit
+1.  Update version number in setup.py and hdfs3/__init__.py.  Commit
 2.  Tag git commit
 
         git tag -a 0.0.2 -m "Version 0.0.2"

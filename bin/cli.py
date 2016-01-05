@@ -5,7 +5,7 @@ Command-line HDFS via python
 """
 
 import argparse
-import libhdfs3.core as hdfs
+import hdfs3.core as hdfs
 import sys
 import inspect
 
@@ -14,7 +14,7 @@ parser.add_argument("command", help="filesystem command to run")
 parser.add_argument("par1", help="", nargs="?", default=None)
 parser.add_argument("par2", help="", nargs="?", default=None)
 parser.add_argument("par3", help="", nargs="?", default=None)
-parser.add_argument('--port', type=int, 
+parser.add_argument('--port', type=int,
                    help='Name node port')
 parser.add_argument('--host', type=str,
                    help='Name node address')
