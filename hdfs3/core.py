@@ -85,6 +85,16 @@ class HDFileSystem():
         if self.autoconnect:
             self.connect()
 
+    def __getstate__(self):
+        d = self.__dict__
+        del d['_handle']
+        return d
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._handle = None
+        self.connect()
+
     def connect(self):
         assert self._handle is None, "Already connected"
         o = _lib.hdfsNewBuilder()

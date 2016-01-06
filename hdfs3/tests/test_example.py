@@ -41,3 +41,8 @@ def test_rm(hdfs):
     assert hdfs.ls('/tmp/test/1')
     hdfs.rm('/tmp/test/1')
     assert not hdfs.ls('/tmp/test')
+
+
+def test_pickle(hdfs):
+    import pickle
+    hdfs2 = pickle.loads(pickle.dumps(hdfs))
