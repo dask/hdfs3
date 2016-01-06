@@ -8,7 +8,8 @@ import warnings
 import fnmatch
 PY3 = sys.version_info.major > 2
 here = os.path.dirname(os.path.abspath(__file__))
-_lib = ctypes.cdll.LoadLibrary(os.sep.join([here, 'libhdfs3.so']))
+so_directory = '/usr/local/lib'
+_lib = ctypes.cdll.LoadLibrary(os.sep.join([so_directory, 'libhdfs3.so']))
 
 
 def get_default_host():
@@ -51,7 +52,7 @@ def init_kerb():
 class HDFileSystem():
     "A connection to an HDFS namenode"
     _handle = None
-    host = get_default_host()
+    host = None
     port = 9000
     user = None
     ticket_cache = None
@@ -79,6 +80,7 @@ class HDFileSystem():
         """
         for arg in kwargs:
             setattr(self, arg, kwargs[arg])
+        self.host = kwargs['host'] if 'host' in kwargs else get_default_host()
         # self.__dict__.update(kwargs)
         if self.autoconnect:
             self.connect()
@@ -323,7 +325,7 @@ class HDFile():
     mode = None
     encoding = 'ascii'
     buffer = b''
-    
+
     def __init__(self, fs, path, mode, repl=1, offset=0, buff=0):
         "Called by open on a HDFileSystem"
         self.fs = fs
@@ -352,7 +354,7 @@ class HDFile():
             if ret == 0:
                 break
             if ret > 0:
-                if ret < bufsize:
+                if ret <= bufsize:
                     buffers.append(p.raw[:ret])
                 length -= ret
             else:
@@ -381,13 +383,13 @@ class HDFile():
                 yield self.readline()
             except EOFError:
                 raise StopIteration
-    
+
     def __iter__(self):
         return self._genline()
-    
+
     def readlines(self):
         return list(self)
-    
+
     def tell(self):
         out = _lib.hdfsTell(self._fs, self._handle)
         if out == -1:
