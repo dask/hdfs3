@@ -6,9 +6,38 @@ System.
 
 The `Hadoop File System`_ (HDFS) is a widely deployed, distributed, data-local
 file system written in Java.  libhdfs3_ is an alternative native C/C++ HDFS
-client that interacts with HDFS without the JVM.  This library, `hdfs3`, is a
+client that interacts with HDFS without the JVM.  This library, ``hdfs3``, is a
 Python wrapper around the C/C++ libhdfs3 library.  It provides both direct
 access to libhdfs3 from Python as well as a typical Pythonic interface.
+
+Example
+-------
+
+HDFS3 is easy to setup:
+
+.. code-block:: python
+
+   from hdfs3 import HDFileSystem
+   hdfs = HDFileSystem(host='localhost', port=8020)
+
+Use it to manage files on HDFS
+
+.. code-block:: python
+
+   >>> hdfs.ls('/user/data')
+   ...
+   >>> hdfs.put('local-file.txt', '/user/data/file.txt')
+   >>> hdfs.cp('/user/data/file.txt', '/user2/data')
+
+Use it to read data directly from HDFS into the local Python process:
+
+.. code-block:: python
+
+   with hdfs.open('/user/data/file.txt') as f:
+       f.seek(2000)
+       bytes = f.read(1000000)
+
+``hdfs3`` runs without significant performance overhead.
 
 API
 ---
