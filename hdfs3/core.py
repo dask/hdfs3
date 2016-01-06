@@ -7,9 +7,9 @@ import subprocess
 import warnings
 import fnmatch
 PY3 = sys.version_info.major > 2
-# here = os.path.dirname(os.path.abspath(__file__))
-here = '/usr/local/lib'
-_lib = ctypes.cdll.LoadLibrary(os.sep.join([here, 'libhdfs3.so']))
+here = os.path.dirname(os.path.abspath(__file__))
+so_directory = '/usr/local/lib'
+_lib = ctypes.cdll.LoadLibrary(os.sep.join([so_directory, 'libhdfs3.so']))
 
 
 def get_default_host():
