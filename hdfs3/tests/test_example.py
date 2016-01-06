@@ -2,9 +2,7 @@ from hdfs3 import HDFileSystem
 
 def test_example():
     import time
-    import os
-    os.environ["LIBHDFS3_CONF"] = "/etc/hadoop/conf/hdfs-site.xml"
-
+    
     fs = HDFileSystem(host='localhost', port=8020)
     print(fs)
 

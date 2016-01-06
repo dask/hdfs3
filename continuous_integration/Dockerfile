@@ -13,6 +13,7 @@ RUN git clone https://github.com/PivotalRD/libhdfs3.git /opt/libhdfs3
 ADD docker-files/libhdfs-build.sh /tmp/libhdfs-build.sh
 RUN bash /tmp/libhdfs-build.sh
 ENV LD_LIBRARY_PATH /usr/local/lib:$LD_LIBRARY_PATH
+ENV LIBHDFS3_CONF /etc/hadoop/conf/hdfs-site.xml
 
 # hdfs3 - python
 RUN /opt/conda/bin/conda install -y -q ipython pytest
