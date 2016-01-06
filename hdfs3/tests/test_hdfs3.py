@@ -44,5 +44,24 @@ def test_rm(hdfs):
 
 
 def test_pickle(hdfs):
+    data = b'a' * (10 * 2**20)
+    with hdfs.open('/tmp/test/file3', 'w', repl=1) as f:
+        f.write(data)
+
+    assert hdfs._handle > 0
     import pickle
     hdfs2 = pickle.loads(pickle.dumps(hdfs))
+    assert hdfs2._handle > 0
+
+    hdfs2.touch('/tmp/test/file')
+    hdfs2.ls('/tmp/test/file')
+
+    with hdfs2.open('/tmp/test/file2', 'w', repl=1) as f:
+        f.write(data)
+
+    with hdfs2.open('/tmp/test/file2', 'r') as f:
+        f.seek(5)
+        f.read(10)
+
+    with hdfs.open('/tmp/test/file4', 'w', repl=1) as f:
+        f.write(data)
