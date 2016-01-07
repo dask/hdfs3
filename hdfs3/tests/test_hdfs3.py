@@ -1,17 +1,18 @@
 from hdfs3 import HDFileSystem, lib
+from hdfs3.compatibility import FileNotFoundError, PermissionError
 import pytest
 import ctypes
 
 @pytest.yield_fixture
 def hdfs():
     hdfs = HDFileSystem(host='localhost', port=8020)
-    if hdfs.ls('/tmp/test'):
+    if hdfs.exists('/tmp/test'):
         hdfs.rm('/tmp/test')
     hdfs.mkdir('/tmp/test')
 
     yield hdfs
 
-    if hdfs.ls('/tmp/test'):
+    if hdfs.exists('/tmp/test'):
         hdfs.rm('/tmp/test')
 
 
@@ -101,7 +102,29 @@ def test_write_blocksize(hdfs):
         hdfs.open(a, 'r', block_size=123)
 
 
+def test_errors(hdfs):
+    with pytest.raises(FileNotFoundError):
+        hdfs.open('/tmp/test/shfoshf', 'r')
+
+    with pytest.raises(FileNotFoundError):
+        hdfs.touch('/tmp/test/shfoshf/x')
+
+    with pytest.raises(FileNotFoundError):
+        hdfs.rm('/tmp/test/shfoshf/x')
+
+    with pytest.raises(FileNotFoundError):
+        hdfs.mv('/tmp/test/shfoshf/x', '/tmp/test/shfoshf/y')
+
+    with pytest.raises(PermissionError):
+        hdfs.open('/x', 'w')
+
+    with pytest.raises(PermissionError):
+        hdfs.open('/x', 'r')
+
+
 def test_glob(hdfs):
+    hdfs.mkdir('/tmp/test/c/')
+    hdfs.mkdir('/tmp/test/c/d/')
     filenames = ['a1', 'a2', 'a3', 'b1', 'c/x1', 'c/x2', 'c/d/x3']
     filenames = ['/tmp/test/' + s for s in filenames]
     for fn in filenames:
@@ -136,20 +159,20 @@ def test_df(hdfs):
 
 def test_move(hdfs):
     hdfs.touch(a)
-    assert hdfs.ls(a)
-    assert not hdfs.ls(b)
+    assert hdfs.exists(a)
+    assert not hdfs.exists(b)
     hdfs.mv(a, b)
-    assert not hdfs.ls(a)
-    assert hdfs.ls(b)
+    assert not hdfs.exists(a)
+    assert hdfs.exists(b)
 
 
 def test_copy(hdfs):
     hdfs.touch(a)
-    assert hdfs.ls(a)
-    assert not hdfs.ls(b)
+    assert hdfs.exists(a)
+    assert not hdfs.exists(b)
     hdfs.cp(a, b)
-    assert hdfs.ls(a)
-    assert hdfs.ls(b)
+    assert hdfs.exists(a)
+    assert hdfs.exists(b)
 
 
 def test_exists(hdfs):

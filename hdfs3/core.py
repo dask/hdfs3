@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 "Main module defining filesystem and file classes"
 from __future__ import absolute_import
+
 import os
 import ctypes
 import sys
@@ -9,6 +10,8 @@ import warnings
 import fnmatch
 PY3 = sys.version_info.major > 2
 from hdfs3.lib import _lib
+
+from .compatibility import FileNotFoundError, PermissionError
 
 def get_default_host():
     """ Guess namenode by looking in this machine's hadoop conf. """
@@ -195,7 +198,7 @@ class HDFileSystem():
         return {'capacity': cap, 'used': used, 'free': 100*(cap-used)/cap}
 
     def get_block_locations(self, path, start=0, length=0):
-        "Fetch physical locations of blocks"
+        """ Fetch physical locations of blocks """
         if not self._handle:
             raise IOError("Filesystem not connected")
         start = int(start) or 0
@@ -216,6 +219,8 @@ class HDFileSystem():
 
     def info(self, path):
         """ File information """
+        if not self.exists(path):
+            raise FileNotFoundError(path)
         fi = _lib.hdfsGetPathInfo(self._handle, ensure_byte(path)).contents
         out = struct_to_dict(fi)
         _lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
@@ -234,6 +239,8 @@ class HDFileSystem():
         return out
 
     def ls(self, path):
+        if not self.exists(path):
+            raise FileNotFoundError(path)
         num = ctypes.c_int(0)
         fi = _lib.hdfsListDirectory(self._handle, ensure_byte(path), ctypes.byref(num))
         out = [struct_to_dict(fi[i]) for i in range(num.value)]
@@ -258,11 +265,15 @@ class HDFileSystem():
         return out == 0
 
     def mv(self, path1, path2):
+        if not self.exists(path1):
+            raise FileNotFoundError(path1)
         out = _lib.hdfsRename(self._handle, ensure_byte(path1), ensure_byte(path2))
         return out == 0
 
     def rm(self, path, recursive=True):
         "Use recursive for `rm -r`, i.e., delete directory and contents"
+        if not self.exists(path):
+            raise FileNotFoundError(path)
         out = _lib.hdfsDelete(self._handle, ensure_byte(path), bool(recursive))
         return out == 0
 
@@ -278,25 +289,33 @@ class HDFileSystem():
 
     def chmod(self, path, mode):
         "Mode in numerical format (give as octal, if convenient)"
+        if not self.exists(path):
+            raise FileNotFoundError(path)
         out = _lib.hdfsChmod(self._handle, ensure_byte(path), ctypes.c_short(int(mode)))
         return out == 0
 
     def chown(self, path, owner, group):
         "Change owner/group"
+        if not self.exists(path):
+            raise FileNotFoundError(path)
         out = _lib.hdfsChown(self._handle, ensure_byte(path), ensure_byte(owner),
                             ensure_byte(group))
         return out == 0
 
     def cat(self, path):
         """ Return contents of file """
+        if not self.exists(path):
+            raise FileNotFoundError(path)
         buffers = []
         with self.open(path, 'r') as f:
             result = f.read()
         return result
 
     def get(self, path, filename):
-        "Copy HDFS file to local"
+        """ Copy HDFS file to local """
         #TODO: _lib.hdfsCopy() may do this more efficiently
+        if not self.exists(path):
+            raise FileNotFoundError(path)
         with self.open(path, 'r') as f:
             with open(filename, 'wb') as f2:
                 out = 1
@@ -305,7 +324,7 @@ class HDFileSystem():
                     f2.write(out)
 
     def getmerge(self, path, filename):
-        "Concat all files in path (a directory) to output file"
+        """ Concat all files in path (a directory) to output file """
         files = self.ls(path)
         with open(filename, 'wb') as f2:
             for apath in files:
@@ -314,7 +333,6 @@ class HDFileSystem():
                     while out:
                         out = f.read()
                         f2.write(out)
-
 
     def put(self, filename, path, chunk=2**16):
         """ Copy local file to path in HDFS """
@@ -338,7 +356,7 @@ class HDFileSystem():
             return f.read(size)
 
     def touch(self, path):
-        "Create zero-length file"
+        """ Create zero-length file """
         self.open(path, 'w').close()
 
 
