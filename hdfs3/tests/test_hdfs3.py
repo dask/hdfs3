@@ -58,10 +58,13 @@ def test_pickle(hdfs):
 
     with hdfs2.open('/tmp/test/file2', 'w', repl=1) as f:
         f.write(data)
+        assert f._handle
 
     with hdfs2.open('/tmp/test/file2', 'r') as f:
         f.seek(5)
         f.read(10)
+        assert f._handle
 
     with hdfs.open('/tmp/test/file4', 'w', repl=1) as f:
         f.write(data)
+        assert f._handle
