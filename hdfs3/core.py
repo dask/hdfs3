@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 "Main module defining filesystem and file classes"
+from __future__ import absolute_import
 import os
 import ctypes
 import sys
@@ -7,7 +8,7 @@ import subprocess
 import warnings
 import fnmatch
 PY3 = sys.version_info.major > 2
-from lib import _lib
+from .lib import _lib
 
 def get_default_host():
     "Try to guess the namenode by looking in this machine's hadoop conf."
