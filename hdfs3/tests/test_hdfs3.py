@@ -15,13 +15,19 @@ def hdfs():
         hdfs.rm('/tmp/test')
 
 
+a = '/tmp/test/a'
+b = '/tmp/test/b'
+c = '/tmp/test/c'
+d = '/tmp/test/d'
+
+
 def test_example(hdfs):
     data = b'a' * (10 * 2**20)
 
-    with hdfs.open('/tmp/test/file', 'w', repl=1) as f:
+    with hdfs.open(a, 'w', repl=1) as f:
         f.write(data)
 
-    with hdfs.open('/tmp/test/file', 'r') as f:
+    with hdfs.open(a, 'r') as f:
         out = f.read(len(data))
         assert len(data) == len(out)
         assert out == data
@@ -29,23 +35,23 @@ def test_example(hdfs):
 
 def test_ls_touch(hdfs):
     assert not hdfs.ls('/tmp/test')
-    hdfs.touch('/tmp/test/1')
-    hdfs.touch('/tmp/test/2')
+    hdfs.touch(a)
+    hdfs.touch(b)
     L = hdfs.ls('/tmp/test')
-    assert set(d['name'] for d in L) == {'/tmp/test/1', '/tmp/test/2'}
+    assert set(d['name'] for d in L) == set([a, b])
 
 
 def test_rm(hdfs):
-    assert not hdfs.ls('/tmp/test')
-    hdfs.touch('/tmp/test/1')
-    assert hdfs.ls('/tmp/test/1')
-    hdfs.rm('/tmp/test/1')
-    assert not hdfs.ls('/tmp/test')
+    assert not hdfs.exists(a)
+    hdfs.touch(a)
+    assert hdfs.exists(a)
+    hdfs.rm(a)
+    assert not hdfs.exists(a)
 
 
 def test_pickle(hdfs):
     data = b'a' * (10 * 2**20)
-    with hdfs.open('/tmp/test/file3', 'w', repl=1) as f:
+    with hdfs.open(a, 'w', repl=1) as f:
         f.write(data)
 
     assert hdfs._handle > 0
@@ -53,19 +59,19 @@ def test_pickle(hdfs):
     hdfs2 = pickle.loads(pickle.dumps(hdfs))
     assert hdfs2._handle > 0
 
-    hdfs2.touch('/tmp/test/file')
-    hdfs2.ls('/tmp/test/file')
+    hdfs2.touch(b)
+    hdfs2.ls(b)
 
-    with hdfs2.open('/tmp/test/file2', 'w', repl=1) as f:
+    with hdfs2.open(c, 'w', repl=1) as f:
         f.write(data)
         assert f._handle
 
-    with hdfs2.open('/tmp/test/file2', 'r') as f:
+    with hdfs2.open(c, 'r') as f:
         f.seek(5)
         f.read(10)
         assert f._handle
 
-    with hdfs.open('/tmp/test/file4', 'w', repl=1) as f:
+    with hdfs.open(d, 'w', repl=1) as f:
         f.write(data)
         assert f._handle
 
@@ -82,18 +88,17 @@ def test_bad_open(hdfs):
 
 
 def test_write_blocksize(hdfs):
-    fn = '/tmp/test/file'
-    with hdfs.open(fn, 'w', block_size=10) as f:
+    with hdfs.open(a, 'w', block_size=10) as f:
         f.write(b'a' * 25)
 
-    blocks = hdfs.get_block_locations(fn)
+    blocks = hdfs.get_block_locations(a)
     assert len(blocks) == 3
     assert blocks[0]['length'] == 10
     assert blocks[1]['length'] == 10
     assert blocks[2]['length'] == 5
 
     with pytest.raises(ValueError):
-        hdfs.open(fn, 'r', block_size=123)
+        hdfs.open(a, 'r', block_size=123)
 
 
 def test_glob(hdfs):
@@ -109,29 +114,25 @@ def test_glob(hdfs):
 
 
 def test_info(hdfs):
-    fn = '/tmp/test/foo'
-    with hdfs.open(fn, 'w', repl=1, block_size=100000000) as f:
+    with hdfs.open(a, 'w', repl=1, block_size=100000000) as f:
         f.write('a' * 5)
 
-    info = hdfs.info(fn)
+    info = hdfs.info(a)
     assert info['size'] == 5
-    assert info['name'] == fn
+    assert info['name'] == a
     assert info['replication'] == 1
     assert info['block_size'] == 100000000
 
 
 def test_df(hdfs):
-    with hdfs.open('/tmp/test/file1', 'w', repl=1) as f:
+    with hdfs.open(a, 'w', repl=1) as f:
         f.write('a' * 10)
-    with hdfs.open('/tmp/test/file2', 'w', repl=1) as f:
+    with hdfs.open(b, 'w', repl=1) as f:
         f.write('a' * 10)
 
     result = hdfs.df()
     assert result['capacity'] > result['used']
 
-
-a = '/tmp/test/a'
-b = '/tmp/test/b'
 
 def test_move(hdfs):
     hdfs.touch(a)
