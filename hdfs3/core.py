@@ -45,6 +45,19 @@ def ensure_string(s):
     return s
 
 
+def ensure_trailing_slash(s):
+    """ Ensure that string ends with a slash
+
+    >>> ensure_trailing_slash('/user/directory')
+    '/user/directory/'
+    >>> ensure_trailing_slash('/user/directory/')
+    '/user/directory/'
+    """
+    if not s.endswith('/'):
+        s += '/'
+    return s
+
+
 def init_kerb():
     """ Find Kerberos credentials.
 
@@ -320,10 +333,11 @@ class HDFileSystem():
     def tail(self, path, size=None):
         """ Return last bytes of file """
         size = int(size) or 1024
-        length = self.du(path)
+        length = self.du(path)[ensure_trailing_slash(path)]
         if size > length:
             return self.cat(path)
-        with self.open(path, 'r', offset=length-size) as f:
+        with self.open(path, 'r') as f:
+            f.seek(length - size)
             return f.read(size)
 
     def touch(self, path):
