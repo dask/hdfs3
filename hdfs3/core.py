@@ -8,7 +8,7 @@ import subprocess
 import warnings
 import fnmatch
 PY3 = sys.version_info.major > 2
-from .lib import _lib
+from hdfs3.lib import _lib
 
 def get_default_host():
     "Try to guess the namenode by looking in this machine's hadoop conf."
@@ -325,10 +325,8 @@ class HDFile():
         self.mode = mode
         out = _lib.hdfsOpenFile(self._fs, ensure_byte(path), m, buff,
                             ctypes.c_short(repl), ctypes.c_int64(0))
-        if out == 0:
-            raise IOError("File open failed")
+        assert out, "File open failed"
         self._handle = out
-        assert self._handle > 0
         if mode=='r' and offset > 0:
             self.seek(offset)
 
