@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 "Main module defining filesystem and file classes"
+from __future__ import absolute_import
 import os
 import ctypes
 import sys
@@ -7,16 +8,16 @@ import subprocess
 import warnings
 import fnmatch
 PY3 = sys.version_info.major > 2
-here = os.path.dirname(os.path.abspath(__file__))
-so_directory = '/usr/local/lib'
-_lib = ctypes.cdll.LoadLibrary(os.sep.join([so_directory, 'libhdfs3.so']))
-
+from hdfs3.lib import _lib
 
 def get_default_host():
     "Try to guess the namenode by looking in this machine's hadoop conf."
     confd = os.environ.get('HADOOP_CONF_DIR', os.environ.get('HADOOP_INSTALL',
                            '') + '/hadoop/conf')
-    host = open(os.sep.join([confd, 'masters'])).readlines()[1][:-1]
+    try:
+        host = open(os.sep.join([confd, 'masters'])).readlines()[1][:-1]
+    except IOError:
+        host = 'default'
     return host
 
 
@@ -96,7 +97,8 @@ class HDFileSystem():
         self.connect()
 
     def connect(self):
-        assert self._handle is None, "Already connected"
+        if not self._handle is None:
+            raise IOError("Already connected")
         o = _lib.hdfsNewBuilder()
         _lib.hdfsBuilderSetNameNodePort(o, self.port)
         _lib.hdfsBuilderSetNameNode(o, ensure_byte(self.host))
@@ -108,10 +110,8 @@ class HDFileSystem():
             _lib.hdfsBuilderSetToken(o, ensure_byte(self.token))
         if self.pars:
             for par in self.pars:
-                try:
-                    assert _lib.hdfsBuilderConfSetStr(o, ensure_byte(par),
-                                          ensure_byte(self.pars(par))) == 0
-                except AssertionError:
+                if not  _lib.hdfsBuilderConfSetStr(o, ensure_byte(par),
+                                          ensure_byte(self.pars(par))) == 0:
                     warnings.warn('Setting conf parameter %s failed' % par)
         fs = _lib.hdfsBuilderConnect(o)
         if fs:
@@ -128,7 +128,8 @@ class HDFileSystem():
         self._handle = None
 
     def open(self, path, mode='r', **kwargs):
-        assert self._handle, "Filesystem not connected"
+        if not self._handle:
+            raise IOError("Filesystem not connected")
         return HDFile(self, path, mode, **kwargs)
 
     def du(self, path, total=False, deep=False):
@@ -154,7 +155,8 @@ class HDFileSystem():
 
     def get_block_locations(self, path, start=0, length=0):
         "Fetch physical locations of blocks"
-        assert self._handle, "Filesystem not connected"
+        if not self._handle:
+            raise IOError("Filesystem not connected")
         start = int(start) or 0
         length = int(length) or self.info(path)['size']
         nblocks = ctypes.c_int(0)
@@ -256,6 +258,7 @@ class HDFileSystem():
 
     def get(self, path, filename):
         "Copy HDFS file to local"
+        #TODO: _lib.hdfsCopy() may do this more efficiently
         with self.open(path, 'r') as f:
             with open(filename, 'wb') as f2:
                 out = 1
@@ -277,6 +280,7 @@ class HDFileSystem():
 
     def put(self, filename, path, chunk=2**16):
         "Copy local file to path in HDFS"
+        #TODO: _lib.hdfsCopy() may do this more efficiently
         with self.open(path, 'w') as f:
             with open(filename, 'rb') as f2:
                 while True:
@@ -303,45 +307,6 @@ def struct_to_dict(s):
     return dict((name, getattr(s, name)) for (name, p) in s._fields_)
 
 
-class BlockLocation(ctypes.Structure):
-    _fields_ = [('corrupt', ctypes.c_int),
-                ('numOfNodes', ctypes.c_int),
-                ('hosts', ctypes.POINTER(ctypes.c_char_p)),
-                ('names', ctypes.POINTER(ctypes.c_char_p)),
-                ('topologyPaths', ctypes.POINTER(ctypes.c_char_p)),
-                ('length', ctypes.c_int64),
-                ('offset', ctypes.c_int64)]
-_lib.hdfsGetFileBlockLocations.restype = ctypes.POINTER(BlockLocation)
-
-
-class FileInfo(ctypes.Structure):
-    _fields_ = [('kind', ctypes.c_int8),
-                ('name', ctypes.c_char_p),
-                ('last_mod', ctypes.c_int64),  #time_t, could be 32bit
-                ('size', ctypes.c_int64),
-                ('replication', ctypes.c_short),
-                ('block_size', ctypes.c_int64),
-                ('owner', ctypes.c_char_p),
-                ('group', ctypes.c_char_p),
-                ('permissions', ctypes.c_short),  #view as octal
-                ('last_access', ctypes.c_int64),  #time_t, could be 32bit
-                ]
-_lib.hdfsGetPathInfo.restype = ctypes.POINTER(FileInfo)
-_lib.hdfsListDirectory.restype = ctypes.POINTER(FileInfo)
-
-
-class HdfsFileInternalWrapper(ctypes.Structure):
-    _fields_ = [('input', ctypes.c_bool),
-                ('stream', ctypes.c_void_p)]
-_lib.hdfsOpenFile.restype = ctypes.POINTER(HdfsFileInternalWrapper)
-
-
-class HdfsFileSystemInternalWrapper(ctypes.Structure):
-    # _fields_ = [('filesystem', ctypes.POINTER(FileSystem))]
-    _fields_ = [('filesystem', ctypes.c_void_p)]  # TODO: expand this if needed
-_lib.hdfsBuilderConnect.restype = ctypes.POINTER(HdfsFileSystemInternalWrapper)
-
-
 class HDFile():
     _handle = None
     fs = None
@@ -361,16 +326,16 @@ class HDFile():
         self.mode = mode
         out = _lib.hdfsOpenFile(self._fs, ensure_byte(path), m, buff,
                             ctypes.c_short(repl), ctypes.c_int64(0))
-        if out == 0:
+        if not out:
             raise IOError("File open failed")
         self._handle = out
-        assert self._handle > 0
         if mode=='r' and offset > 0:
             self.seek(offset)
 
     def read(self, length=2**16):
         """ Read bytes from open file """
-        assert _lib.hdfsFileIsOpenForRead(self._handle), 'File not read mode'
+        if not _lib.hdfsFileIsOpenForRead(self._handle):
+            raise IOError('File not read mode')
         buffers = []
 
         while length:
@@ -433,8 +398,10 @@ class HDFile():
 
     def write(self, data):
         data = ensure_byte(data)
-        assert _lib.hdfsFileIsOpenForWrite(self._handle), 'File not write mode'
-        assert _lib.hdfsWrite(self._fs, self._handle, data, len(data)) == len(data)
+        if not _lib.hdfsFileIsOpenForWrite(self._handle):
+            raise IOError('File not write mode')
+        if not _lib.hdfsWrite(self._fs, self._handle, data, len(data)) == len(data):
+            raise IOError('Write failed')
 
     def flush(self):
         _lib.hdfsFlush(self._fs, self._handle)

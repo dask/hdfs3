@@ -1,6 +1,6 @@
-from hdfs3 import HDFileSystem
+from hdfs3 import HDFileSystem, lib
 import pytest
-
+import ctypes
 
 @pytest.yield_fixture
 def hdfs():
@@ -68,3 +68,8 @@ def test_pickle(hdfs):
     with hdfs.open('/tmp/test/file4', 'w', repl=1) as f:
         f.write(data)
         assert f._handle
+
+def test_libload():
+    assert lib.hdfsGetLastError()
+    assert len(lib.hdfsGetLastError.__doc__) > 0
+    assert lib.hdfsFileIsOpenForRead(lib.hdfsFile()) == False
