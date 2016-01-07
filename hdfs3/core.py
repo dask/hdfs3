@@ -138,7 +138,7 @@ class HDFileSystem():
             _lib.hdfsDisconnect(self._handle)
         self._handle = None
 
-    def open(self, path, mode='r', repl=1, buff=0):
+    def open(self, path, mode='r', repl=1, buff=0, block_size=0):
         """ Open a file for reading or writing
 
         Parameters
@@ -149,10 +149,16 @@ class HDFileSystem():
             One of 'r', 'w', or 'a'
         repl: int
             Replication factor
+        block_size: int
+            Size of data-node blocks if writing
         """
         if not self._handle:
             raise IOError("Filesystem not connected")
-        return HDFile(self, path, mode, repl=repl, buff=buff)
+        if block_size and mode != 'w':
+            raise ValueError('Block size only valid when writing new file')
+        assert self._handle, "Filesystem not connected"
+        return HDFile(self, path, mode, repl=repl, buff=buff,
+                block_size=block_size)
 
     def du(self, path, total=False, deep=False):
         if isinstance(total, str):
@@ -331,7 +337,7 @@ def struct_to_dict(s):
 
 class HDFile(object):
     """ File on HDFS """
-    def __init__(self, fs, path, mode, repl=1, buff=0):
+    def __init__(self, fs, path, mode, repl=1, buff=0, block_size=0):
         """ Called by open on a HDFileSystem """
         self.fs = fs
         self.path = path
@@ -342,8 +348,9 @@ class HDFile(object):
         self.encoding = 'ascii'
         m = {'w': 1, 'r': 0, 'a': 1025}[mode]
         self.mode = mode
+        self.block_size = block_size
         out = _lib.hdfsOpenFile(self._fs, ensure_byte(path), m, buff,
-                            ctypes.c_short(repl), ctypes.c_int64(0))
+                            ctypes.c_short(repl), ctypes.c_int64(block_size))
         if not out:
             raise IOError("File open failed")
         self._handle = out
