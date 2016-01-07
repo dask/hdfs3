@@ -76,6 +76,11 @@ def test_libload():
     assert lib.hdfsFileIsOpenForRead(lib.hdfsFile()) == False
 
 
+def test_bad_open(hdfs):
+    with pytest.raises(IOError):
+        hdfs.open('')
+
+
 def test_write_blocksize(hdfs):
     fn = '/tmp/test/file'
     with hdfs.open(fn, 'w', block_size=10) as f:
