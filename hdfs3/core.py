@@ -302,6 +302,7 @@ class HDFileSystem():
 def struct_to_dict(s):
     return dict((name, getattr(s, name)) for (name, p) in s._fields_)
 
+
 class BlockLocation(ctypes.Structure):
     _fields_ = [('corrupt', ctypes.c_int),
                 ('numOfNodes', ctypes.c_int),
@@ -311,6 +312,7 @@ class BlockLocation(ctypes.Structure):
                 ('length', ctypes.c_int64),
                 ('offset', ctypes.c_int64)]
 _lib.hdfsGetFileBlockLocations.restype = ctypes.POINTER(BlockLocation)
+
 
 class FileInfo(ctypes.Structure):
     _fields_ = [('kind', ctypes.c_int8),
@@ -326,6 +328,19 @@ class FileInfo(ctypes.Structure):
                 ]
 _lib.hdfsGetPathInfo.restype = ctypes.POINTER(FileInfo)
 _lib.hdfsListDirectory.restype = ctypes.POINTER(FileInfo)
+
+
+class HdfsFileInternalWrapper(ctypes.Structure):
+    _fields_ = [('input', ctypes.c_bool),
+                ('stream', ctypes.c_void_p)]
+_lib.hdfsOpenFile.restype = ctypes.POINTER(HdfsFileInternalWrapper)
+
+
+class HdfsFileSystemInternalWrapper(ctypes.Structure):
+    # _fields_ = [('filesystem', ctypes.POINTER(FileSystem))]
+    _fields_ = [('filesystem', ctypes.c_void_p)]  # TODO: expand this if needed
+_lib.hdfsBuilderConnect.restype = ctypes.POINTER(HdfsFileSystemInternalWrapper)
+
 
 class HDFile():
     _handle = None
@@ -349,6 +364,7 @@ class HDFile():
         if out == 0:
             raise IOError("File open failed")
         self._handle = out
+        assert self._handle > 0
         if mode=='r' and offset > 0:
             self.seek(offset)
 
