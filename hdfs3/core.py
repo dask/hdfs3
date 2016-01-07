@@ -11,7 +11,7 @@ PY3 = sys.version_info.major > 2
 from hdfs3.lib import _lib
 
 def get_default_host():
-    "Try to guess the namenode by looking in this machine's hadoop conf."
+    """ Guess namenode by looking in this machine's hadoop conf. """
     confd = os.environ.get('HADOOP_CONF_DIR', os.environ.get('HADOOP_INSTALL',
                            '') + '/hadoop/conf')
     try:
@@ -22,7 +22,7 @@ def get_default_host():
 
 
 def ensure_byte(s):
-    "Give strings that ctypes is guaranteed to handle"
+    """ Give strings that ctypes is guaranteed to handle """
     if PY3:
         if isinstance(s, str):
             return s.encode('ascii')
@@ -35,14 +35,22 @@ def ensure_byte(s):
 
 
 def ensure_string(s):
+    """ Ensure that the result is a string
+
+    >>> ensure_string(b'123')
+    u'123'
+    """
     if hasattr(s, 'decode'):
         return s.decode()
     return s
 
 
 def init_kerb():
-    """Uses system kinit to find credentials. Set up by editing
-    krb5.conf"""
+    """ Find Kerberos credentials.
+
+    Use system kinit to find credentials.
+    Set up by editing krb5.conf
+    """
     raise NotImplementedError("Please set your credentials manually")
     out1 = subprocess.check_call(['kinit'])
     out2 = subprocess.check_call(['klist'])
@@ -51,18 +59,12 @@ def init_kerb():
 
 
 class HDFileSystem():
-    "A connection to an HDFS namenode"
-    _handle = None
-    host = None
-    port = 9000
-    user = None
-    ticket_cache = None
-    token = None
-    pars = {}
-    _token = None  # Delegation token (generated)
-    autoconnect = True
+    """ Connection to an HDFS namenode
 
-    def __init__(self, **kwargs):
+    >>> hdfs = HDFileSystem(localhost='127.0.0.1', port=50070)  # doctest: +SKIP
+    """
+    def __init__(self, host=None, port=50070, user=None, ticket_cache=None,
+            token=None, pars=None, connect=True):
         """
         Parameters
         ----------
@@ -79,11 +81,14 @@ class HDFileSystem():
         pars : {str: str}
             other parameters for hadoop
         """
-        for arg in kwargs:
-            setattr(self, arg, kwargs[arg])
-        self.host = kwargs['host'] if 'host' in kwargs else get_default_host()
-        # self.__dict__.update(kwargs)
-        if self.autoconnect:
+        self.host = host or get_default_host()
+        self.port = port
+        self.user = user
+        self.ticket_cache = ticket_cache
+        self.pars = pars
+        self.token = None  # Delegation token (generated)
+        self._handle = None
+        if connect:
             self.connect()
 
     def __getstate__(self):
@@ -97,8 +102,13 @@ class HDFileSystem():
         self.connect()
 
     def connect(self):
-        if not self._handle is None:
-            raise IOError("Already connected")
+        """ Connect to the name node
+
+        This happens automatically at startup
+        """
+        if self._handle:
+            raise ValueError("Already connected")
+
         o = _lib.hdfsNewBuilder()
         _lib.hdfsBuilderSetNameNodePort(o, self.port)
         _lib.hdfsBuilderSetNameNode(o, ensure_byte(self.host))
@@ -123,14 +133,26 @@ class HDFileSystem():
             raise RuntimeError('Connection Failed')
 
     def disconnect(self):
+        """ Disconnect from name node """
         if self._handle:
             _lib.hdfsDisconnect(self._handle)
         self._handle = None
 
-    def open(self, path, mode='r', **kwargs):
+    def open(self, path, mode='r', repl=1, buff=0):
+        """ Open a file for reading or writing
+
+        Parameters
+        ----------
+        path: string
+            Path of file on HDFS
+        mode: string
+            One of 'r', 'w', or 'a'
+        repl: int
+            Replication factor
+        """
         if not self._handle:
             raise IOError("Filesystem not connected")
-        return HDFile(self, path, mode, **kwargs)
+        return HDFile(self, path, mode, repl=repl, buff=buff)
 
     def du(self, path, total=False, deep=False):
         if isinstance(total, str):
@@ -307,21 +329,17 @@ def struct_to_dict(s):
     return dict((name, getattr(s, name)) for (name, p) in s._fields_)
 
 
-class HDFile():
-    _handle = None
-    fs = None
-    _fs = None
-    path = None
-    mode = None
-    encoding = 'ascii'
-    buffer = b''
-
-    def __init__(self, fs, path, mode, repl=1, offset=0, buff=0):
-        "Called by open on a HDFileSystem"
+class HDFile(object):
+    """ File on HDFS """
+    def __init__(self, fs, path, mode, repl=1, buff=0):
+        """ Called by open on a HDFileSystem """
         self.fs = fs
         self.path = path
         self.repl = repl
         self._fs = fs._handle
+        self.buffer = b''
+        self._handle = None
+        self.encoding = 'ascii'
         m = {'w': 1, 'r': 0, 'a': 1025}[mode]
         self.mode = mode
         out = _lib.hdfsOpenFile(self._fs, ensure_byte(path), m, buff,
@@ -329,10 +347,9 @@ class HDFile():
         if not out:
             raise IOError("File open failed")
         self._handle = out
-        if mode=='r' and offset > 0:
-            self.seek(offset)
+        assert self._handle > 0
 
-    def read(self, length=2**16):
+    def read(self, length):
         """ Read bytes from open file """
         if not _lib.hdfsFileIsOpenForRead(self._handle):
             raise IOError('File not read mode')
@@ -354,7 +371,7 @@ class HDFile():
         return b''.join(buffers)
 
     def readline(self):
-        "Read a buffered line, text mode."
+        """ Read a buffered line, text mode. """
         lines = getattr(self, 'lines', [])
         if len(lines) < 1:
             buff = self.read()
@@ -393,7 +410,7 @@ class HDFile():
             raise IOError('Seek Failed')
 
     def info(self):
-        "filesystem metadata about this file"
+        """ Filesystem metadata about this file """
         return self.fs.info(self.path)
 
     def write(self, data):
@@ -413,6 +430,9 @@ class HDFile():
         self.mode = 'closed'
 
     def get_block_locs(self):
+        """
+        Get host locations and offsets of all blocks that compose this file
+        """
         return self.fs.get_block_locations(self.path)
 
     def __del__(self):
@@ -427,23 +447,3 @@ class HDFile():
 
     def __exit__(self, *args):
         self.close()
-
-
-def test():
-    fs = HDFileSystem()
-    with fs.open('/newtest', 'w', repl=1) as f:
-        import time
-        data = b'a' * (1024 * 2**20)
-        t0 = time.time()
-        f.write(data)
-    t1 = time.time()
-    with fs.open('/newtest', 'r') as f:
-        out = f.read(len(data))
-    print(fs)
-    print(f)
-    print(fs.info(f.path))
-    print(t1 - t0)
-    print(time.time() - t1)
-    print(subprocess.check_output("hadoop fs -ls /newtest", shell=True))
-    print(f.get_block_locs())
-    fs.rm(f.path)
