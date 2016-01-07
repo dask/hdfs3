@@ -73,7 +73,7 @@ return An array of BlockLocation struct."""
 
 hdfsGetLastError = _lib.hdfsGetLastError
 hdfsGetLastError.argtypes = []
-hdfsGetLastError.argtypes = [ct.c_char_p]
+hdfsGetLastError.restype = ct.c_char_p
 hdfsGetLastError.__doc__ = """Return error information of last failed operation.
 
 return A not NULL const string point of last error information.
