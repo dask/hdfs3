@@ -16,7 +16,7 @@ def get_default_host():
     try:
         host = open(os.sep.join([confd, 'masters'])).readlines()[1][:-1]
     except IOError:
-        host = 'localhost'
+        host = 'default'
     return host
 
 
@@ -256,6 +256,7 @@ class HDFileSystem():
 
     def get(self, path, filename):
         "Copy HDFS file to local"
+        #TODO: _lib.hdfsCopy() may do this more efficiently
         with self.open(path, 'r') as f:
             with open(filename, 'wb') as f2:
                 out = 1
@@ -277,6 +278,7 @@ class HDFileSystem():
 
     def put(self, filename, path, chunk=2**16):
         "Copy local file to path in HDFS"
+        #TODO: _lib.hdfsCopy() may do this more efficiently
         with self.open(path, 'w') as f:
             with open(filename, 'rb') as f2:
                 while True:
