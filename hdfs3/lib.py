@@ -24,18 +24,6 @@ class BlockLocation(ct.Structure):
                 ('topologyPaths', ct.POINTER(ct.c_char_p)),
                 ('length', ct.c_int64),
                 ('offset', ct.c_int64)]
-hdfsGetFileBlockLocations = _lib.hdfsGetFileBlockLocations
-hdfsGetFileBlockLocations.argtypes = [ct.c_char_p]
-hdfsGetFileBlockLocations.restype = ct.POINTER(BlockLocation)
-hdfsGetFileBlockLocations.__doc__ = """Get an array containing hostnames, offset and size of portions of the given file.
-
-param fs The file system
-param path The path to the file
-param start The start offset into the given file
-param length The length for which to get locations for
-param numOfBlock Output the number of elements in the returned array
-return An array of BlockLocation struct."""
-
 class FileInfo(ct.Structure):
     _fields_ = [('kind', ct.c_int8),
                 ('name', ct.c_char_p),
@@ -68,6 +56,20 @@ class hdfsFile(ct.Structure):
 
 class hdfsFS(ct.Structure):
     _fields_ = [('filesystem', ct.c_void_p)]  # TODO: expand this if needed
+
+hdfsGetFileBlockLocations = _lib.hdfsGetFileBlockLocations
+hdfsGetFileBlockLocations.argtypes = [ct.POINTER(hdfsFS), ct.c_char_p,
+                                      tOffset, tOffset, ct.POINTER(ct.c_int)]
+hdfsGetFileBlockLocations.restype = ct.POINTER(BlockLocation)
+hdfsGetFileBlockLocations.__doc__ = """Get an array containing hostnames, offset and size of portions of the given file.
+
+param fs The file system
+param path The path to the file
+param start The start offset into the given file
+param length The length for which to get locations for
+param numOfBlock Output the number of elements in the returned array
+return An array of BlockLocation struct."""
+
 
 hdfsGetLastError = _lib.hdfsGetLastError
 hdfsGetLastError.argtypes = []
