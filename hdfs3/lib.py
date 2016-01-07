@@ -34,7 +34,7 @@ class FileInfo(ct.Structure):
                 ('owner', ct.c_char_p),
                 ('group', ct.c_char_p),
                 ('permissions', ct.c_short),  #view as octal
-                ('last_access', ct.c_int64),  #time_t, could be 32bit               
+                ('last_access', ct.c_int64),  #time_t, could be 32bit
                 ]
 hdfsGetPathInfo = _lib.hdfsGetPathInfo
 hdfsGetPathInfo.argtypes = [ct.c_char_p]
@@ -42,7 +42,7 @@ hdfsGetPathInfo.restype = ct.POINTER(FileInfo)
 hdfsGetPathInfo.__doc__ = """Get information about a path as a (dynamically
 allocated) single hdfsFileInfo struct. hdfsFreeFileInfo should be
 called when the pointer is no longer needed.
- 
+
 param fs The configured filesystem handle.
 param path The path of the file.
 return Returns a dynamically-allocated hdfsFileInfo object;
@@ -467,7 +467,7 @@ hdfsGetDefaultBlockSize = _lib.hdfsGetDefaultBlockSize
 hdfsGetDefaultBlockSize.argtypes = [ct.POINTER(hdfsFS)]
 hdfsGetDefaultBlockSize.restype = tOffset
 hdfsGetDefaultBlockSize.__doc__ = """Get the default blocksize.
- 
+
 param fs            The configured filesystem handle.
 deprecated          Use hdfsGetDefaultBlockSizeAtPath instead.
 return              Returns the default blocksize, or -1 on error."""
@@ -565,4 +565,4 @@ hdfsFreeFileBlockLocations.restype = None
 hdfsFreeFileBlockLocations.__doc__ = """Free the BlockLocation array returned by hdfsGetFileBlockLocations
 
 param locations The array returned by hdfsGetFileBlockLocations
-param numOfBlock The number of elements in the locaitons"""
+param numOfBlock The number of elements in the locations"""

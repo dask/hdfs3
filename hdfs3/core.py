@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 "Main module defining filesystem and file classes"
 from __future__ import absolute_import
+
 import os
 import ctypes
 import sys
@@ -10,8 +11,10 @@ import fnmatch
 PY3 = sys.version_info.major > 2
 from hdfs3.lib import _lib
 
+from .compatibility import FileNotFoundError, PermissionError
+
 def get_default_host():
-    "Try to guess the namenode by looking in this machine's hadoop conf."
+    """ Guess namenode by looking in this machine's hadoop conf. """
     confd = os.environ.get('HADOOP_CONF_DIR', os.environ.get('HADOOP_INSTALL',
                            '') + '/hadoop/conf')
     try:
@@ -22,7 +25,7 @@ def get_default_host():
 
 
 def ensure_byte(s):
-    "Give strings that ctypes is guaranteed to handle"
+    """ Give strings that ctypes is guaranteed to handle """
     if PY3:
         if isinstance(s, str):
             return s.encode('ascii')
@@ -35,14 +38,35 @@ def ensure_byte(s):
 
 
 def ensure_string(s):
+    """ Ensure that the result is a string
+
+    >>> ensure_string(b'123')
+    u'123'
+    """
     if hasattr(s, 'decode'):
         return s.decode()
     return s
 
 
+def ensure_trailing_slash(s):
+    """ Ensure that string ends with a slash
+
+    >>> ensure_trailing_slash('/user/directory')
+    '/user/directory/'
+    >>> ensure_trailing_slash('/user/directory/')
+    '/user/directory/'
+    """
+    if not s.endswith('/'):
+        s += '/'
+    return s
+
+
 def init_kerb():
-    """Uses system kinit to find credentials. Set up by editing
-    krb5.conf"""
+    """ Find Kerberos credentials.
+
+    Use system kinit to find credentials.
+    Set up by editing krb5.conf
+    """
     raise NotImplementedError("Please set your credentials manually")
     out1 = subprocess.check_call(['kinit'])
     out2 = subprocess.check_call(['klist'])
@@ -51,18 +75,12 @@ def init_kerb():
 
 
 class HDFileSystem():
-    "A connection to an HDFS namenode"
-    _handle = None
-    host = None
-    port = 9000
-    user = None
-    ticket_cache = None
-    token = None
-    pars = {}
-    _token = None  # Delegation token (generated)
-    autoconnect = True
+    """ Connection to an HDFS namenode
 
-    def __init__(self, **kwargs):
+    >>> hdfs = HDFileSystem(localhost='127.0.0.1', port=50070)  # doctest: +SKIP
+    """
+    def __init__(self, host=None, port=50070, user=None, ticket_cache=None,
+            token=None, pars=None, connect=True):
         """
         Parameters
         ----------
@@ -79,11 +97,14 @@ class HDFileSystem():
         pars : {str: str}
             other parameters for hadoop
         """
-        for arg in kwargs:
-            setattr(self, arg, kwargs[arg])
-        self.host = kwargs['host'] if 'host' in kwargs else get_default_host()
-        # self.__dict__.update(kwargs)
-        if self.autoconnect:
+        self.host = host or get_default_host()
+        self.port = port
+        self.user = user
+        self.ticket_cache = ticket_cache
+        self.pars = pars
+        self.token = None  # Delegation token (generated)
+        self._handle = None
+        if connect:
             self.connect()
 
     def __getstate__(self):
@@ -97,8 +118,13 @@ class HDFileSystem():
         self.connect()
 
     def connect(self):
-        if not self._handle is None:
-            raise IOError("Already connected")
+        """ Connect to the name node
+
+        This happens automatically at startup
+        """
+        if self._handle:
+            raise ValueError("Already connected")
+
         o = _lib.hdfsNewBuilder()
         _lib.hdfsBuilderSetNameNodePort(o, self.port)
         _lib.hdfsBuilderSetNameNode(o, ensure_byte(self.host))
@@ -123,14 +149,32 @@ class HDFileSystem():
             raise RuntimeError('Connection Failed')
 
     def disconnect(self):
+        """ Disconnect from name node """
         if self._handle:
             _lib.hdfsDisconnect(self._handle)
         self._handle = None
 
-    def open(self, path, mode='r', **kwargs):
+    def open(self, path, mode='r', repl=1, buff=0, block_size=0):
+        """ Open a file for reading or writing
+
+        Parameters
+        ----------
+        path: string
+            Path of file on HDFS
+        mode: string
+            One of 'r', 'w', or 'a'
+        repl: int
+            Replication factor
+        block_size: int
+            Size of data-node blocks if writing
+        """
         if not self._handle:
             raise IOError("Filesystem not connected")
-        return HDFile(self, path, mode, **kwargs)
+        if block_size and mode != 'w':
+            raise ValueError('Block size only valid when writing new file')
+        assert self._handle, "Filesystem not connected"
+        return HDFile(self, path, mode, repl=repl, buff=buff,
+                block_size=block_size)
 
     def du(self, path, total=False, deep=False):
         if isinstance(total, str):
@@ -151,10 +195,10 @@ class HDFileSystem():
     def df(self):
         cap = _lib.hdfsGetCapacity(self._handle)
         used = _lib.hdfsGetUsed(self._handle)
-        return {'capacity': cap, 'used': used, 'free%': 100*(cap-used)/cap}
+        return {'capacity': cap, 'used': used, 'free': 100*(cap-used)/cap}
 
     def get_block_locations(self, path, start=0, length=0):
-        "Fetch physical locations of blocks"
+        """ Fetch physical locations of blocks """
         if not self._handle:
             raise IOError("Filesystem not connected")
         start = int(start) or 0
@@ -174,7 +218,9 @@ class HDFileSystem():
         return locs
 
     def info(self, path):
-        "File information"
+        """ File information """
+        if not self.exists(path):
+            raise FileNotFoundError(path)
         fi = _lib.hdfsGetPathInfo(self._handle, ensure_byte(path)).contents
         out = struct_to_dict(fi)
         _lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
@@ -193,6 +239,8 @@ class HDFileSystem():
         return out
 
     def ls(self, path):
+        if not self.exists(path):
+            raise FileNotFoundError(path)
         num = ctypes.c_int(0)
         fi = _lib.hdfsListDirectory(self._handle, ensure_byte(path), ctypes.byref(num))
         out = [struct_to_dict(fi[i]) for i in range(num.value)]
@@ -217,11 +265,15 @@ class HDFileSystem():
         return out == 0
 
     def mv(self, path1, path2):
+        if not self.exists(path1):
+            raise FileNotFoundError(path1)
         out = _lib.hdfsRename(self._handle, ensure_byte(path1), ensure_byte(path2))
         return out == 0
 
     def rm(self, path, recursive=True):
         "Use recursive for `rm -r`, i.e., delete directory and contents"
+        if not self.exists(path):
+            raise FileNotFoundError(path)
         out = _lib.hdfsDelete(self._handle, ensure_byte(path), bool(recursive))
         return out == 0
 
@@ -237,28 +289,33 @@ class HDFileSystem():
 
     def chmod(self, path, mode):
         "Mode in numerical format (give as octal, if convenient)"
+        if not self.exists(path):
+            raise FileNotFoundError(path)
         out = _lib.hdfsChmod(self._handle, ensure_byte(path), ctypes.c_short(int(mode)))
         return out == 0
 
     def chown(self, path, owner, group):
         "Change owner/group"
+        if not self.exists(path):
+            raise FileNotFoundError(path)
         out = _lib.hdfsChown(self._handle, ensure_byte(path), ensure_byte(owner),
                             ensure_byte(group))
         return out == 0
 
     def cat(self, path):
-        "Return contents of file"
-        buff = b''
+        """ Return contents of file """
+        if not self.exists(path):
+            raise FileNotFoundError(path)
+        buffers = []
         with self.open(path, 'r') as f:
-            out = 1
-            while out:
-                out = f.read(2**16)
-                buff = buff + out
-        return buff
+            result = f.read()
+        return result
 
     def get(self, path, filename):
-        "Copy HDFS file to local"
+        """ Copy HDFS file to local """
         #TODO: _lib.hdfsCopy() may do this more efficiently
+        if not self.exists(path):
+            raise FileNotFoundError(path)
         with self.open(path, 'r') as f:
             with open(filename, 'wb') as f2:
                 out = 1
@@ -267,7 +324,7 @@ class HDFileSystem():
                     f2.write(out)
 
     def getmerge(self, path, filename):
-        "Concat all files in path (a directory) to output file"
+        """ Concat all files in path (a directory) to output file """
         files = self.ls(path)
         with open(filename, 'wb') as f2:
             for apath in files:
@@ -277,9 +334,8 @@ class HDFileSystem():
                         out = f.read()
                         f2.write(out)
 
-
     def put(self, filename, path, chunk=2**16):
-        "Copy local file to path in HDFS"
+        """ Copy local file to path in HDFS """
         #TODO: _lib.hdfsCopy() may do this more efficiently
         with self.open(path, 'w') as f:
             with open(filename, 'rb') as f2:
@@ -290,16 +346,17 @@ class HDFileSystem():
                     f.write(out)
 
     def tail(self, path, size=None):
-        "Return last size bytes of file"
+        """ Return last bytes of file """
         size = int(size) or 1024
-        length = self.du(path)
+        length = self.du(path)[ensure_trailing_slash(path)]
         if size > length:
             return self.cat(path)
-        with self.open(path, 'r', offset=length-size) as f:
+        with self.open(path, 'r') as f:
+            f.seek(length - size)
             return f.read(size)
 
     def touch(self, path):
-        "Create zero-length file"
+        """ Create zero-length file """
         self.open(path, 'w').close()
 
 
@@ -307,54 +364,56 @@ def struct_to_dict(s):
     return dict((name, getattr(s, name)) for (name, p) in s._fields_)
 
 
-class HDFile():
-    _handle = None
-    fs = None
-    _fs = None
-    path = None
-    mode = None
-    encoding = 'ascii'
-    buffer = b''
-
-    def __init__(self, fs, path, mode, repl=1, offset=0, buff=0):
-        "Called by open on a HDFileSystem"
+class HDFile(object):
+    """ File on HDFS """
+    def __init__(self, fs, path, mode, repl=1, buff=0, block_size=0):
+        """ Called by open on a HDFileSystem """
         self.fs = fs
         self.path = path
         self.repl = repl
         self._fs = fs._handle
+        self.buffer = b''
+        self._handle = None
+        self.encoding = 'ascii'
         m = {'w': 1, 'r': 0, 'a': 1025}[mode]
         self.mode = mode
+        self.block_size = block_size
         out = _lib.hdfsOpenFile(self._fs, ensure_byte(path), m, buff,
-                            ctypes.c_short(repl), ctypes.c_int64(0))
+                            ctypes.c_short(repl), ctypes.c_int64(block_size))
         if not out:
             raise IOError("File open failed")
         self._handle = out
-        if mode=='r' and offset > 0:
-            self.seek(offset)
+        assert self._handle > 0
 
-    def read(self, length=2**16):
+    def read(self, length=None):
         """ Read bytes from open file """
         if not _lib.hdfsFileIsOpenForRead(self._handle):
             raise IOError('File not read mode')
         buffers = []
 
-        while length:
-            bufsize = min(2**16, length)
-            p = ctypes.create_string_buffer(bufsize)
-            ret = _lib.hdfsRead(self._fs, self._handle, p, ctypes.c_int32(bufsize))
-            if ret == 0:
-                break
-            if ret > 0:
-                if ret <= bufsize:
-                    buffers.append(p.raw[:ret])
-                length -= ret
-            else:
-                raise IOError('Read Failed:', -ret)
+        if length is None:
+            out = 1
+            while out:
+                out = self.read(2**16)
+                buffers.append(out)
+        else:
+            while length:
+                bufsize = min(2**16, length)
+                p = ctypes.create_string_buffer(bufsize)
+                ret = _lib.hdfsRead(self._fs, self._handle, p, ctypes.c_int32(bufsize))
+                if ret == 0:
+                    break
+                if ret > 0:
+                    if ret <= bufsize:
+                        buffers.append(p.raw[:ret])
+                    length -= ret
+                else:
+                    raise IOError('Read Failed:', -ret)
 
         return b''.join(buffers)
 
     def readline(self):
-        "Read a buffered line, text mode."
+        """ Read a buffered line, text mode. """
         lines = getattr(self, 'lines', [])
         if len(lines) < 1:
             buff = self.read()
@@ -393,7 +452,7 @@ class HDFile():
             raise IOError('Seek Failed')
 
     def info(self):
-        "filesystem metadata about this file"
+        """ Filesystem metadata about this file """
         return self.fs.info(self.path)
 
     def write(self, data):
@@ -413,6 +472,9 @@ class HDFile():
         self.mode = 'closed'
 
     def get_block_locs(self):
+        """
+        Get host locations and offsets of all blocks that compose this file
+        """
         return self.fs.get_block_locations(self.path)
 
     def __del__(self):
@@ -427,23 +489,3 @@ class HDFile():
 
     def __exit__(self, *args):
         self.close()
-
-
-def test():
-    fs = HDFileSystem()
-    with fs.open('/newtest', 'w', repl=1) as f:
-        import time
-        data = b'a' * (1024 * 2**20)
-        t0 = time.time()
-        f.write(data)
-    t1 = time.time()
-    with fs.open('/newtest', 'r') as f:
-        out = f.read(len(data))
-    print(fs)
-    print(f)
-    print(fs.info(f.path))
-    print(t1 - t0)
-    print(time.time() - t1)
-    print(subprocess.check_output("hadoop fs -ls /newtest", shell=True))
-    print(f.get_block_locs())
-    fs.rm(f.path)
