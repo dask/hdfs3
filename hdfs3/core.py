@@ -7,16 +7,16 @@ import subprocess
 import warnings
 import fnmatch
 PY3 = sys.version_info.major > 2
-here = os.path.dirname(os.path.abspath(__file__))
-so_directory = '/usr/local/lib'
-_lib = ctypes.cdll.LoadLibrary(os.sep.join([so_directory, 'libhdfs3.so']))
-
+from lib import _lib
 
 def get_default_host():
     "Try to guess the namenode by looking in this machine's hadoop conf."
     confd = os.environ.get('HADOOP_CONF_DIR', os.environ.get('HADOOP_INSTALL',
                            '') + '/hadoop/conf')
-    host = open(os.sep.join([confd, 'masters'])).readlines()[1][:-1]
+    try:
+        host = open(os.sep.join([confd, 'masters'])).readlines()[1][:-1]
+    except FileNotFoundError:
+        host = 'localhost'
     return host
 
 
@@ -301,45 +301,6 @@ class HDFileSystem():
 
 def struct_to_dict(s):
     return dict((name, getattr(s, name)) for (name, p) in s._fields_)
-
-
-class BlockLocation(ctypes.Structure):
-    _fields_ = [('corrupt', ctypes.c_int),
-                ('numOfNodes', ctypes.c_int),
-                ('hosts', ctypes.POINTER(ctypes.c_char_p)),
-                ('names', ctypes.POINTER(ctypes.c_char_p)),
-                ('topologyPaths', ctypes.POINTER(ctypes.c_char_p)),
-                ('length', ctypes.c_int64),
-                ('offset', ctypes.c_int64)]
-_lib.hdfsGetFileBlockLocations.restype = ctypes.POINTER(BlockLocation)
-
-
-class FileInfo(ctypes.Structure):
-    _fields_ = [('kind', ctypes.c_int8),
-                ('name', ctypes.c_char_p),
-                ('last_mod', ctypes.c_int64),  #time_t, could be 32bit
-                ('size', ctypes.c_int64),
-                ('replication', ctypes.c_short),
-                ('block_size', ctypes.c_int64),
-                ('owner', ctypes.c_char_p),
-                ('group', ctypes.c_char_p),
-                ('permissions', ctypes.c_short),  #view as octal
-                ('last_access', ctypes.c_int64),  #time_t, could be 32bit
-                ]
-_lib.hdfsGetPathInfo.restype = ctypes.POINTER(FileInfo)
-_lib.hdfsListDirectory.restype = ctypes.POINTER(FileInfo)
-
-
-class HdfsFileInternalWrapper(ctypes.Structure):
-    _fields_ = [('input', ctypes.c_bool),
-                ('stream', ctypes.c_void_p)]
-_lib.hdfsOpenFile.restype = ctypes.POINTER(HdfsFileInternalWrapper)
-
-
-class HdfsFileSystemInternalWrapper(ctypes.Structure):
-    # _fields_ = [('filesystem', ctypes.POINTER(FileSystem))]
-    _fields_ = [('filesystem', ctypes.c_void_p)]  # TODO: expand this if needed
-_lib.hdfsBuilderConnect.restype = ctypes.POINTER(HdfsFileSystemInternalWrapper)
 
 
 class HDFile():
