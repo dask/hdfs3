@@ -179,7 +179,7 @@ class HDFileSystem():
     def df(self):
         cap = _lib.hdfsGetCapacity(self._handle)
         used = _lib.hdfsGetUsed(self._handle)
-        return {'capacity': cap, 'used': used, 'free%': 100*(cap-used)/cap}
+        return {'capacity': cap, 'used': used, 'free': 100*(cap-used)/cap}
 
     def get_block_locations(self, path, start=0, length=0):
         "Fetch physical locations of blocks"
@@ -202,7 +202,7 @@ class HDFileSystem():
         return locs
 
     def info(self, path):
-        "File information"
+        """ File information """
         fi = _lib.hdfsGetPathInfo(self._handle, ensure_byte(path)).contents
         out = struct_to_dict(fi)
         _lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
@@ -275,14 +275,14 @@ class HDFileSystem():
         return out == 0
 
     def cat(self, path):
-        "Return contents of file"
-        buff = b''
+        """ Return contents of file """
+        buffers = []
         with self.open(path, 'r') as f:
             out = 1
             while out:
                 out = f.read(2**16)
-                buff = buff + out
-        return buff
+                buffers.append(buff)
+        return b''.join(buffers)
 
     def get(self, path, filename):
         "Copy HDFS file to local"
@@ -307,7 +307,7 @@ class HDFileSystem():
 
 
     def put(self, filename, path, chunk=2**16):
-        "Copy local file to path in HDFS"
+        """ Copy local file to path in HDFS """
         #TODO: _lib.hdfsCopy() may do this more efficiently
         with self.open(path, 'w') as f:
             with open(filename, 'rb') as f2:
@@ -318,7 +318,7 @@ class HDFileSystem():
                     f.write(out)
 
     def tail(self, path, size=None):
-        "Return last size bytes of file"
+        """ Return last bytes of file """
         size = int(size) or 1024
         length = self.du(path)
         if size > length:
@@ -356,24 +356,30 @@ class HDFile(object):
         self._handle = out
         assert self._handle > 0
 
-    def read(self, length):
+    def read(self, length=None):
         """ Read bytes from open file """
         if not _lib.hdfsFileIsOpenForRead(self._handle):
             raise IOError('File not read mode')
         buffers = []
 
-        while length:
-            bufsize = min(2**16, length)
-            p = ctypes.create_string_buffer(bufsize)
-            ret = _lib.hdfsRead(self._fs, self._handle, p, ctypes.c_int32(bufsize))
-            if ret == 0:
-                break
-            if ret > 0:
-                if ret <= bufsize:
-                    buffers.append(p.raw[:ret])
-                length -= ret
-            else:
-                raise IOError('Read Failed:', -ret)
+        if length is None:
+            out = 1
+            while out:
+                out = self.read(2**16)
+                buffers.append(out)
+        else:
+            while length:
+                bufsize = min(2**16, length)
+                p = ctypes.create_string_buffer(bufsize)
+                ret = _lib.hdfsRead(self._fs, self._handle, p, ctypes.c_int32(bufsize))
+                if ret == 0:
+                    break
+                if ret > 0:
+                    if ret <= bufsize:
+                        buffers.append(p.raw[:ret])
+                    length -= ret
+                else:
+                    raise IOError('Read Failed:', -ret)
 
         return b''.join(buffers)
 
