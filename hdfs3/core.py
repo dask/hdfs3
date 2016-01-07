@@ -15,7 +15,7 @@ def get_default_host():
                            '') + '/hadoop/conf')
     try:
         host = open(os.sep.join([confd, 'masters'])).readlines()[1][:-1]
-    except FileNotFoundError:
+    except IOError:
         host = 'localhost'
     return host
 
