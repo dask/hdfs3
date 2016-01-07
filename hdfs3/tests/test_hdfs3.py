@@ -70,6 +70,6 @@ def test_pickle(hdfs):
         assert f._handle
 
 def test_libload():
-    assert lib.hdfsGetLastError() == 'Success'
+    assert lib.hdfsGetLastError()
     assert len(lib.hdfsGetLastError.__doc__) > 0
     assert lib.hdfsFileIsOpenForRead(lib.hdfsFile()) == False
