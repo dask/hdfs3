@@ -160,6 +160,12 @@ def test_exists(hdfs):
     assert not hdfs.exists(a)
 
 
+def test_cat(hdfs):
+    with hdfs.open(a, 'w') as f:
+        f.write(b'0123456789')
+    assert hdfs.cat(a) == b'0123456789'
+
+
 def test_full_read(hdfs):
     with hdfs.open(a, 'w') as f:
         f.write(b'0123456789')

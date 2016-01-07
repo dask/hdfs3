@@ -291,11 +291,8 @@ class HDFileSystem():
         """ Return contents of file """
         buffers = []
         with self.open(path, 'r') as f:
-            out = 1
-            while out:
-                out = f.read(2**16)
-                buffers.append(buff)
-        return b''.join(buffers)
+            result = f.read()
+        return result
 
     def get(self, path, filename):
         "Copy HDFS file to local"
