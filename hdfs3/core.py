@@ -14,16 +14,6 @@ from hdfs3.lib import _lib
 
 from .compatibility import FileNotFoundError, PermissionError, urlparse
 
-def get_default_host():
-    """ Guess namenode by looking in this machine's hadoop conf. """
-    confd = os.environ.get('HADOOP_CONF_DIR', os.environ.get('HADOOP_INSTALL',
-                           '') + '/hadoop/conf')
-    try:
-        host = open(os.sep.join([confd, 'masters'])).readlines()[1][:-1]
-    except IOError:
-        host = 'default'
-    return host
-
 def hdfs_conf():
     """ Load HDFS config from default locations. """
     confd = os.environ.get('HADOOP_CONF_DIR', os.environ.get('HADOOP_INSTALL',
@@ -65,6 +55,8 @@ def conf_to_dict(fname):
                 val = True
             conf[key] = val
     return conf
+
+conf = hdfs_conf()
 
 def ensure_byte(s):
     """ Give strings that ctypes is guaranteed to handle """
@@ -121,7 +113,7 @@ class HDFileSystem():
 
     >>> hdfs = HDFileSystem(localhost='127.0.0.1', port=50070)  # doctest: +SKIP
     """
-    def __init__(self, host=None, port=50070, user=None, ticket_cache=None,
+    def __init__(self, host=None, port=None, user=None, ticket_cache=None,
             token=None, pars=None, connect=True):
         """
         Parameters
@@ -139,8 +131,8 @@ class HDFileSystem():
         pars : {str: str}
             other parameters for hadoop
         """
-        self.host = host or get_default_host()
-        self.port = port
+        self.host = host or conf.get('host', 'localhost')
+        self.port = port or conf.get('port', 50070)
         self.user = user
         self.ticket_cache = ticket_cache
         self.pars = pars
