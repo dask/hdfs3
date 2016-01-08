@@ -1,0 +1,15 @@
+package:
+    name: hdfs3
+    version: 0.0.1
+
+source:
+    path: ../..
+
+requirements:
+    build:
+        - python
+        - libhdfs3
+    run:
+        - python
+        - libhdfs3
+

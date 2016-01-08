@@ -1,0 +1,8 @@
+package:
+    name: libntlm
+    version: 1.4
+
+source:
+    fn: libntlm-1.4.tar.gz
+    url: http://www.nongnu.org/libntlm/releases/libntlm-1.4.tar.gz
+    md5: 54793488450e9085c57e0d859ff3bc8c
