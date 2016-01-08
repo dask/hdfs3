@@ -172,7 +172,6 @@ class HDFileSystem():
             raise IOError("Filesystem not connected")
         if block_size and mode != 'w':
             raise ValueError('Block size only valid when writing new file')
-        assert self._handle, "Filesystem not connected"
         return HDFile(self, path, mode, repl=repl, buff=buff,
                 block_size=block_size)
 
@@ -383,7 +382,6 @@ class HDFile(object):
         if not out:
             raise IOError("File open failed")
         self._handle = out
-        assert self._handle > 0
 
     def read(self, length=None):
         """ Read bytes from open file """
