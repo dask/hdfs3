@@ -16,8 +16,7 @@ RUN apt-get install -y -q protobuf-compiler libprotobuf-dev libkrb5-dev
 ENV LIBHDFS3_CONF /etc/hadoop/conf/hdfs-site.xml
 
 # hdfs3 - python
-RUN /opt/conda/bin/conda install -y -q ipython pytest
-RUN conda install libhdfs3 libxml2 libgsasl -c blaze
+RUN /opt/conda/bin/conda install -y -q libhdfs3 libxml2 libgsasl libntlm ipython pytest -c blaze
 # RUN /opt/conda/bin/pip install versioneer pywebhdfs click
 
 # Cloudera repositories
