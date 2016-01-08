@@ -5,15 +5,10 @@ package:
 source:
     git_url: https://github.com/PivotalRD/libhdfs3.git
 
-# requirements:
-#     build:
-#         - protobuf
-#         - cmake
-#         - libxml2
-#         - kerberos
-#     run:
-#         - protobuf
-#         - cmake
-#         - libxml2
-#         - kerberos
-
+requirements:
+    build:
+        - libgsasl
+        - libntlm
+    run:
+        - libgsasl
+        - libntlm
