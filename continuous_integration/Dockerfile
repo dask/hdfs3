@@ -8,7 +8,7 @@ RUN rm /tmp/miniconda.sh
 ENV PATH /opt/conda/bin:$PATH
 
 # libhdfs
-RUN apt-get install -y -q git uuid-dev protobuf-compiler libprotobuf-dev libgsasl7-dev libkrb5-dev
+RUN apt-get install -y -q protobuf-compiler libprotobuf-dev libgsasl7-dev libkrb5-dev
 # RUN git clone https://github.com/PivotalRD/libhdfs3.git /opt/libhdfs3
 # ADD docker-files/libhdfs-build.sh /tmp/libhdfs-build.sh
 # RUN bash /tmp/libhdfs-build.sh
