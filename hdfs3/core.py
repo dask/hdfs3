@@ -8,10 +8,11 @@ import sys
 import subprocess
 import warnings
 import fnmatch
+import re
 PY3 = sys.version_info.major > 2
 from hdfs3.lib import _lib
 
-from .compatibility import FileNotFoundError, PermissionError
+from .compatibility import FileNotFoundError, PermissionError, urlparse
 
 def get_default_host():
     """ Guess namenode by looking in this machine's hadoop conf. """
@@ -23,6 +24,47 @@ def get_default_host():
         host = 'default'
     return host
 
+def hdfs_conf():
+    """ Load HDFS config from default locations. """
+    confd = os.environ.get('HADOOP_CONF_DIR', os.environ.get('HADOOP_INSTALL',
+                           '') + '/hadoop/conf')
+    files = 'core-site.xml', 'hdfs-site.xml'
+    conf = {}
+    for afile in files:
+        try:
+            conf.update(conf_to_dict(os.path.join([confd, afile])))
+        except FileNotFoundError:
+            pass
+    if 'fs.defaultFS' in conf:
+        u = urlparse(conf['fs.defaultFS'])
+        conf['host'] = u.hostname
+        conf['port'] = u.port
+    return conf
+
+def conf_to_dict(fname):
+    name_match = re.compile("<name>(.*?)</name>")
+    val_match = re.compile("<value>(.*?)</value>")
+    conf = {}
+    for line in open(fname):
+        name = name_match.search(line)
+        if name:
+            key = name.groups()[0]
+        val = val_match.search(line)
+        if val:
+            val = val.groups()[0]
+            try:
+                val = int(val)
+            except ValueError:
+                try:
+                    val = float(val)
+                except ValueError:
+                    pass
+            if val == 'false':
+                val = False
+            if val == 'true':
+                val = True
+            conf[key] = val
+    return conf
 
 def ensure_byte(s):
     """ Give strings that ctypes is guaranteed to handle """
