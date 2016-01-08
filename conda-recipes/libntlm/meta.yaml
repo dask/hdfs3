@@ -1,6 +1,6 @@
 package:
     name: libntlm
-    version: 1.4.0
+    version: 1.4
 
 source:
     fn: libntlm-1.4.tar.gz
