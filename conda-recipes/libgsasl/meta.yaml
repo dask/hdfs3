@@ -1,0 +1,8 @@
+package:
+    name: libgsasl
+    version: 1.8.0
+
+source:
+    fn: libgsasl-1.8.0.tar.gz
+    url: ftp://ftp.gnu.org/gnu/gsasl/libgsasl-1.8.0.tar.gz
+    md5: 5dbdf859f6e60e05813370e2b193b92b
