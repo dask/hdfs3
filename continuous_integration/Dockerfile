@@ -7,14 +7,8 @@ RUN /bin/bash /tmp/miniconda.sh -b -p /opt/conda
 RUN rm /tmp/miniconda.sh
 ENV PATH /opt/conda/bin:$PATH
 
-# libhdfs
-# RUN git clone https://github.com/PivotalRD/libhdfs3.git /opt/libhdfs3
-# ADD docker-files/libhdfs-build.sh /tmp/libhdfs-build.sh
-# RUN bash /tmp/libhdfs-build.sh
-# ENV LD_LIBRARY_PATH /usr/local/lib:$LD_LIBRARY_PATH
-ENV LIBHDFS3_CONF /etc/hadoop/conf/hdfs-site.xml
-
 # hdfs3 - python
+ENV LIBHDFS3_CONF /etc/hadoop/conf/hdfs-site.xml
 RUN /opt/conda/bin/conda install -y -q libhdfs3 libxml2 protobuf krb5 boost uuid libgsasl libntlm ipython pytest -c blaze
 # RUN /opt/conda/bin/pip install versioneer pywebhdfs click
 
