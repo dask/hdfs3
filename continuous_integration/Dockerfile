@@ -8,7 +8,6 @@ RUN rm /tmp/miniconda.sh
 ENV PATH /opt/conda/bin:$PATH
 
 # libhdfs
-RUN apt-get install -y -q protobuf-compiler libprotobuf-dev
 # RUN git clone https://github.com/PivotalRD/libhdfs3.git /opt/libhdfs3
 # ADD docker-files/libhdfs-build.sh /tmp/libhdfs-build.sh
 # RUN bash /tmp/libhdfs-build.sh
@@ -16,7 +15,7 @@ RUN apt-get install -y -q protobuf-compiler libprotobuf-dev
 ENV LIBHDFS3_CONF /etc/hadoop/conf/hdfs-site.xml
 
 # hdfs3 - python
-RUN /opt/conda/bin/conda install -y -q libhdfs3 libxml2 krb5 boost uuid libgsasl libntlm ipython pytest -c blaze
+RUN /opt/conda/bin/conda install -y -q libhdfs3 libxml2 protobuf krb5 boost uuid libgsasl libntlm ipython pytest -c blaze
 # RUN /opt/conda/bin/pip install versioneer pywebhdfs click
 
 # Cloudera repositories
