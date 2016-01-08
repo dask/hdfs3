@@ -8,7 +8,7 @@ import ctypes as ct
 import os
 
 PY3 = sys.version_info.major > 2
-so_directory = '/usr/local/lib'
+so_directory = '/opt/conda/pkgs/libhdfs3-1.0.0-0/lib'
 _lib = ct.cdll.LoadLibrary(os.sep.join([so_directory, 'libhdfs3.so']))
 
 tSize = ct.c_int32
