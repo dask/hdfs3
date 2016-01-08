@@ -32,7 +32,7 @@ def hdfs_conf():
     conf = {}
     for afile in files:
         try:
-            conf.update(conf_to_dict(os.path.join([confd, afile])))
+            conf.update(conf_to_dict(os.sep.join([confd, afile])))
         except FileNotFoundError:
             pass
     if 'fs.defaultFS' in conf:
