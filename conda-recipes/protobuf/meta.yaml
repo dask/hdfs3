@@ -1,0 +1,15 @@
+package:
+    name: protobuf
+    version: 2.6.1
+
+source:
+    fn: protobuf-2.6.1.tar.gz
+    url: https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz
+    md5: f3916ce13b7fcb3072a1fa8cf02b2423
+
+requirements:
+    build:
+        - python
+
+    run:
+        - python
