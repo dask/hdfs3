@@ -11,7 +11,7 @@ ENV PATH /opt/conda/bin:$PATH
 RUN apt-get install -y -q protobuf-compiler libprotobuf-dev
 ENV LIBHDFS3_CONF /etc/hadoop/conf/hdfs-site.xml
 RUN /opt/conda/bin/conda install -y -q libxml2 krb5 boost uuid ipython pytest
-RUN /opt/conda/bin/conda install -y -q libhdfs3 libgsasl libntlm -c blaze
+RUN /opt/conda/bin/conda install -y -q libhdfs3 -c blaze
 # RUN /opt/conda/bin/pip install versioneer pywebhdfs click
 
 # Cloudera repositories
