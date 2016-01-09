@@ -7,10 +7,10 @@ source:
 
 requirements:
     build:
-        - protobuf
+        - libprotobuf
         - libgsasl
         - libntlm
     run:
-        - protobuf
+        - libprotobuf
         - libgsasl
         - libntlm
