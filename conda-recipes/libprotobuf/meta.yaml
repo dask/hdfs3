@@ -1,8 +1,8 @@
 package:
     name: libprotobuf
-    version: 2.6.1
+    version: 2.5.0
 
 source:
-    fn: protobuf-2.6.1.tar.gz
-    url: https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz
-    md5: f3916ce13b7fcb3072a1fa8cf02b2423
+    fn: protobuf-2.5.0.tar.gz
+    url: https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz
+    md5: b751f772bdeb2812a2a8e7202bf1dae8
