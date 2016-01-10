@@ -13,3 +13,7 @@ requirements:
         - python
         - libhdfs3
 
+about:
+  home: https://github.com/blaze/hdfs3
+  license: MIT
+  summary: Python wrapper for libhdfs3
