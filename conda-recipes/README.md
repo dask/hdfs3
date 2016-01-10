@@ -4,7 +4,7 @@ Conda packages for hdfs3 and its dependencies can be built from Ubuntu 14.04
 using the following commands:
 
 ```
-export CONDA_DIR=~/miniconda
+export CONDA_DIR=~/miniconda2
 
 sudo apt-get update
 sudo apt-get install -y -q git build-essential cmake libxml2 libxml2-dev uuid-dev protobuf-compiler libprotobuf-dev libgsasl7-dev libkrb5-dev libboost-all-dev
