@@ -1,7 +1,9 @@
-from hdfs3 import HDFileSystem, lib
+from hdfs3 import HDFileSystem, lib, conf_to_dict
 from hdfs3.compatibility import FileNotFoundError, PermissionError
 import pytest
 import ctypes
+import os
+import tempfile
 
 @pytest.yield_fixture
 def hdfs():
@@ -215,3 +217,55 @@ def test_tail(hdfs):
         f.write(b'0123456789')
 
     assert hdfs.tail(a, 3) == b'789'
+
+@pytest.yield_fixture
+def conffile():
+    fd, fname = tempfile.mkstemp()
+    open(fname, 'w').write("""<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<configuration>
+  <property>
+    <name>dfs.permissions.superusergroup</name>
+    <value>hadoop</value>
+  </property>
+
+  <property>
+    <name>dfs.namenode.name.dir</name>
+    <value>/mnt/data/dfs/nn</value>
+  </property>
+
+  <property>
+    <name>dfs.replication</name>
+    <value>3</value>
+  </property>
+
+  <property>
+    <name>dfs.block.size</name>
+    <value>134217728</value>
+  </property>
+
+  <property>
+    <name>dfs.datanode.hdfs-blocks-metadata.enabled</name>
+    <value>true</value>
+  </property>
+
+  <property>
+    <name>dfs.permissions</name>
+    <value>false</value>
+  </property>
+</configuration>
+""")
+    yield fname
+    if os.path.exists(fname):
+        os.unlink(fname)
+
+
+def test_conf(conffile):
+    should = {'dfs.block.size': 134217728,
+             'dfs.datanode.hdfs-blocks-metadata.enabled': True,
+             'dfs.namenode.name.dir': '/mnt/data/dfs/nn',
+             'dfs.permissions': False,
+             'dfs.permissions.superusergroup': 'hadoop',
+             'dfs.replication': 3}
+    assert conf_to_dict(conffile) == should
