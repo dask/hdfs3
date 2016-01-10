@@ -6,9 +6,10 @@ using the following commands:
 ```
 export CONDA_DIR=~/miniconda
 
-sudo apt-get install -y -q git build-essential cmake libxml2 libxml2-dev uuid-dev protobuf-compiler libprotobuf-dev libgsasl7-dev libkrb5-dev libboost1.54-all-dev
+sudo apt-get update
+sudo apt-get install -y -q git build-essential cmake libxml2 libxml2-dev uuid-dev protobuf-compiler libprotobuf-dev libgsasl7-dev libkrb5-dev libboost-all-dev
 
-curl -O http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -o ~/miniconda.sh
+curl http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -o ~/miniconda.sh
 bash ~/miniconda.sh -b -p $CONDA_DIR
 $CONDA_DIR/bin/conda install conda-build anaconda-client -y
 

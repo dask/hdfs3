@@ -1,6 +1,6 @@
 package:
     name: libhdfs3
-    version: 1.0.0
+    version: 2.2.30
 
 source:
     git_url: https://github.com/PivotalRD/libhdfs3.git
@@ -14,3 +14,8 @@ requirements:
         - libprotobuf
         - libgsasl
         - libntlm
+
+about:
+  home: https://github.com/PivotalRD/libhdfs3
+  license: Apache
+  summary: A Native C/C++ HDFS Client
