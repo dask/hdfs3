@@ -1,4 +1,5 @@
-from hdfs3 import HDFileSystem, lib, conf_to_dict
+from hdfs3 import HDFileSystem, lib
+from hdfs3.core import conf_to_dict
 from hdfs3.compatibility import FileNotFoundError, PermissionError
 import pytest
 import ctypes
