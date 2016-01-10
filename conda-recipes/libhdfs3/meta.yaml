@@ -14,3 +14,8 @@ requirements:
         - libprotobuf
         - libgsasl
         - libntlm
+
+about:
+  home: https://github.com/PivotalRD/libhdfs3
+  license: Apache
+  summary: A Native C/C++ HDFS Client
