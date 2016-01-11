@@ -219,7 +219,7 @@ class HDFileSystem():
             raise IOError('Not Found')
         if deep:
             for apath in fi:
-                if apath['kind'] == 68:  # directory
+                if apath['kind'] == 'directory':
                     fi.extend(self.ls(apath['name']))
         if total:
             return {path: sum(f['size'] for f in fi)}
@@ -255,7 +255,7 @@ class HDFileSystem():
         if not self.exists(path):
             raise FileNotFoundError(path)
         fi = _lib.hdfsGetPathInfo(self._handle, ensure_byte(path)).contents
-        out = struct_to_dict(fi)
+        out = info_to_dict(fi)
         _lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
         return out
 
@@ -276,7 +276,7 @@ class HDFileSystem():
             raise FileNotFoundError(path)
         num = ctypes.c_int(0)
         fi = _lib.hdfsListDirectory(self._handle, ensure_byte(path), ctypes.byref(num))
-        out = [struct_to_dict(fi[i]) for i in range(num.value)]
+        out = [info_to_dict(fi[i]) for i in range(num.value)]
         _lib.hdfsFreeFileInfo(fi, num.value)
         return out
 
@@ -395,6 +395,12 @@ class HDFileSystem():
 
 def struct_to_dict(s):
     return dict((name, getattr(s, name)) for (name, p) in s._fields_)
+
+
+def info_to_dict(s):
+    d = struct_to_dict(s)
+    d['kind'] = {68: 'directory', 70: 'file'}[d['kind']]
+    return d
 
 
 class HDFile(object):
