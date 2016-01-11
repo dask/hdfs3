@@ -14,4 +14,6 @@ bash ~/miniconda.sh -b -p $CONDA_DIR
 $CONDA_DIR/bin/conda install conda-build anaconda-client -y
 
 $CONDA_DIR/bin/conda build hdfs3 --python 2.7 --python 3.4 --python 3.5
+
+anaconda upload {FILES} -u blaze
 ```
