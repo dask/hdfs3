@@ -420,7 +420,7 @@ class HDFile(object):
         out = _lib.hdfsOpenFile(self._fs, ensure_byte(path), m, buff,
                             ctypes.c_short(repl), ctypes.c_int64(block_size))
         if not out:
-            raise IOError("File open failed")
+            raise IOError("Could not open file: %s, mode: %s" % (path, mode))
         self._handle = out
 
     def read(self, length=None):
@@ -448,7 +448,7 @@ class HDFile(object):
                         buffers.append(p.raw)
                     length -= ret
                 else:
-                    raise IOError('Read Failed:', -ret)
+                    raise IOError('Read file %s Failed:' % self.path, -ret)
 
         return b''.join(buffers)
 
@@ -483,13 +483,13 @@ class HDFile(object):
     def tell(self):
         out = _lib.hdfsTell(self._fs, self._handle)
         if out == -1:
-            raise IOError('Tell Failed')
+            raise IOError('Tell Failed on file %s' % self.path)
         return out
 
     def seek(self, loc):
         out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(loc))
         if out == -1:
-            raise IOError('Seek Failed')
+            raise IOError('Seek Failed on file %s' % self.path)
 
     def info(self):
         """ Filesystem metadata about this file """
@@ -500,7 +500,7 @@ class HDFile(object):
         if not _lib.hdfsFileIsOpenForWrite(self._handle):
             raise IOError('File not write mode')
         if not _lib.hdfsWrite(self._fs, self._handle, data, len(data)) == len(data):
-            raise IOError('Write failed')
+            raise IOError('Write failed on file %s' % self.path)
 
     def flush(self):
         _lib.hdfsFlush(self._fs, self._handle)
