@@ -147,7 +147,10 @@ def test_info(hdfs):
     info = hdfs.info(a)
     assert info['size'] == 5
     assert info['name'] == a
+    assert info['kind'] == 'file'
     assert info['replication'] == 1
+
+    assert hdfs.info('/')['kind'] == 'directory'
 
 
 def test_df(hdfs):
