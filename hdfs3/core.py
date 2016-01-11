@@ -2,15 +2,16 @@
 "Main module defining filesystem and file classes"
 from __future__ import absolute_import
 
-import os
 import ctypes
-import sys
-import subprocess
-import warnings
 import fnmatch
+import os
 import re
+import subprocess
+import sys
+import warnings
+from .lib import _lib
+
 PY3 = sys.version_info.major > 2
-from hdfs3.lib import _lib
 
 from .compatibility import FileNotFoundError, PermissionError, urlparse
 
@@ -30,6 +31,7 @@ def hdfs_conf():
         conf['host'] = u.hostname
         conf['port'] = u.port
     return conf
+
 
 def conf_to_dict(fname):
     name_match = re.compile("<name>(.*?)</name>")
@@ -111,7 +113,7 @@ def init_kerb():
 class HDFileSystem():
     """ Connection to an HDFS namenode
 
-    >>> hdfs = HDFileSystem(localhost='127.0.0.1', port=50070)  # doctest: +SKIP
+    >>> hdfs = HDFileSystem(host='127.0.0.1', port=50070)  # doctest: +SKIP
     """
     def __init__(self, host=None, port=None, user=None, ticket_cache=None,
             token=None, pars=None, connect=True):
