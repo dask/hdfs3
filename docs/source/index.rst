@@ -37,7 +37,28 @@ Use it to read data directly from HDFS into the local Python process:
        f.seek(2000)
        bytes = f.read(1000000)
 
-``hdfs3`` runs without significant performance overhead.
+
+Install
+-------
+
+Both the compiled ``libhdfs3`` library and the ``hdfs3`` Python project are
+available via conda on the ``blaze`` channel::
+
+   conda install -c blaze hdfs3
+
+
+Motivation
+----------
+
+We choose to use an alternative C/C++/Python HDFS client rather than the
+default JVM client for convenience and performance reasons.
+
+*  Convenience: Interactions between Java libraries and Native (C/C++/Python)
+   libraries can be cumbersome and causes frustration in development,
+   maintenance, and debugging.
+*  Performance: Native libraries like ``libhdfs3`` do not suffer the long JVM
+   startup times, improving interaction.
+
 
 API
 ---
