@@ -1,0 +1,8 @@
+name: hdfs3-docs
+channels:
+    - blaze
+dependencies:
+    - python
+    - hdfs3
+    - libhdfs3
+    - numpydoc
