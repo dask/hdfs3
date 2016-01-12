@@ -9,7 +9,10 @@ import re
 import subprocess
 import sys
 import warnings
-from .lib import _lib
+try:
+    from .lib import _lib
+except (ImportError, OSError):
+    print("Could not find libhdfs3.so")
 
 PY3 = sys.version_info.major > 2
 
