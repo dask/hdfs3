@@ -18,5 +18,5 @@ cd ~/hdfs3/conda-recipes
 $CONDA_DIR/bin/conda build hdfs3 --python 2.7 --python 3.4 --python 3.5
 
 anaconda login
-anaconda upload {FILES} -u blaze
+anaconda upload ~/$CONDA_DIR/conda-bld/linux-64/{FILES} -u blaze
 ```
