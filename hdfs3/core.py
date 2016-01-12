@@ -116,7 +116,7 @@ def init_kerb():
 class HDFileSystem():
     """ Connection to an HDFS namenode
 
-    >>> hdfs = HDFileSystem(host='127.0.0.1', port=50070)  # doctest: +SKIP
+    >>> hdfs = HDFileSystem(host='127.0.0.1', port=8020)  # doctest: +SKIP
     """
     def __init__(self, host=None, port=None, user=None, ticket_cache=None,
             token=None, pars=None, connect=True):
@@ -137,7 +137,7 @@ class HDFileSystem():
             other parameters for hadoop
         """
         self.host = host or conf.get('host', 'localhost')
-        self.port = port or conf.get('port', 50070)
+        self.port = port or conf.get('port', 8020)
         self.user = user
         self.ticket_cache = ticket_cache
         self.pars = pars
