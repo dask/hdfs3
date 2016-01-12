@@ -17,6 +17,6 @@ git clone https://github.com/blaze/hdfs3.git ~/hdfs3
 cd ~/hdfs3/conda-recipes
 $CONDA_DIR/bin/conda build hdfs3 --python 2.7 --python 3.4 --python 3.5
 
-anaconda login
-anaconda upload ~/$CONDA_DIR/conda-bld/linux-64/{FILES} -u blaze
+$CONDA_DIR/bin/anaconda login
+$CONDA_DIR/bin/anaconda upload ~/$CONDA_DIR/conda-bld/linux-64/{FILES} -u blaze
 ```
