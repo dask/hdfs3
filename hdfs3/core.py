@@ -500,6 +500,8 @@ class HDFile(object):
         return out
 
     def seek(self, loc):
+        info = self.info()
+        loc = min(loc, info['size'])
         out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(loc))
         if out == -1:
             raise IOError('Seek Failed on file %s' % self.path)
