@@ -408,6 +408,8 @@ def info_to_dict(s):
     return d
 
 
+mode_numbers = {'w': 1, 'r': 0, 'a': 1025}
+
 class HDFile(object):
     """ File on HDFS """
     def __init__(self, fs, path, mode, repl=1, buff=0, block_size=0):
@@ -415,17 +417,23 @@ class HDFile(object):
         self.fs = fs
         self.path = path
         self.repl = repl
+        self.buff = buff
         self._fs = fs._handle
         self.buffer = b''
         self._handle = None
         self.encoding = 'ascii'
-        m = {'w': 1, 'r': 0, 'a': 1025}[mode]
+        m = [mode]
         self.mode = mode
         self.block_size = block_size
-        out = _lib.hdfsOpenFile(self._fs, ensure_byte(path), m, buff,
-                            ctypes.c_short(repl), ctypes.c_int64(block_size))
+        self._set_handle()
+
+    def _set_handle(self):
+        out = _lib.hdfsOpenFile(self._fs, ensure_byte(self.path),
+                mode_numbers[self.mode], self.buff,
+                            ctypes.c_short(self.repl), ctypes.c_int64(self.block_size))
         if not out:
-            raise IOError("Could not open file: %s, mode: %s" % (path, mode))
+            raise IOError("Could not open file: %s, mode: %s" %
+                          (self.path, self.mode))
         self._handle = out
 
     def read(self, length=None):
