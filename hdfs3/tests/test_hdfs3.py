@@ -80,6 +80,17 @@ def test_pickle(hdfs):
         assert f._handle
 
 
+def test_seek(hdfs):
+    with hdfs.open(a, 'w', repl=1) as f:
+        f.write(b'123')
+
+    with hdfs.open(a) as f:
+        f.seek(1000)
+        assert not f.read(1)
+        f.seek(0)
+        assert f.read(1) == b'1'
+
+
 def test_libload():
     assert lib.hdfsGetLastError()
     assert len(lib.hdfsGetLastError.__doc__) > 0
