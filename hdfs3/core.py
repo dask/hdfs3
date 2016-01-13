@@ -113,7 +113,7 @@ def init_kerb():
     HDFileSystem.token = None
 
 
-class HDFileSystem():
+class HDFileSystem(object):
     """ Connection to an HDFS namenode
 
     >>> hdfs = HDFileSystem(host='127.0.0.1', port=8020)  # doctest: +SKIP
