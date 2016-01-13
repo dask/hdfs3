@@ -60,6 +60,40 @@ default JVM client for convenience and performance reasons.
    startup times, improving interaction.
 
 
+Short-circuit reads in HDFS
+---------------------------
+
+Typically in HDFS, all data reads go through the datanode. Alternatively, it
+is possible to bypass the communication path through the datanode and read
+directly from a file. This is useful in cases where we know the locations of
+data blocks and can improve read speeds.
+
+HDFS and ``hdfs3`` can be configured for short-circuit reads using the
+following two steps:
+
+* Set the ``LIBHDFS3_CONF`` environment vairable to the location of the
+  hdfs-site.xml configuration file (e.g.,
+  ``export LIBHDFS3_CONF=/etc/hadoop/conf/hdfs-site.xml``).
+
+* Configure the appropriate settings in ``hdfs-site.xml`` on all of the HDFS nodes:
+
+.. code-block:: xml
+
+  <configuration>
+    <property>
+      <name>dfs.client.read.shortcircuit</name>
+      <value>true</value>
+    </property>
+    <property>
+      <name>dfs.domain.socket.path</name>
+      <value>/var/lib/hadoop-hdfs/dn_socket</value>
+    </property>
+  </configuration>
+
+For more information about configuring short-circuit reads, refer to the
+`HDFS Short-Circuit Local Reads
+<https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/ShortCircuitLocalReads.html>`_ documentation.
+
 API
 ---
 
