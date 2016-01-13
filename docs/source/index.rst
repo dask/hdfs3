@@ -85,6 +85,7 @@ following two steps:
       <name>dfs.client.read.shortcircuit</name>
       <value>true</value>
     </property>
+
     <property>
       <name>dfs.domain.socket.path</name>
       <value>/var/lib/hadoop-hdfs/dn_socket</value>
