@@ -309,3 +309,16 @@ def test_read_delimited_block(hdfs):
                 [(0, 4), (4, 4), (8, 4)]]:
         out = [hdfs.read_block(fn, o, l, b'\n') for o, l in ols]
         assert delimiter.join(filter(None, out)) == data
+
+
+@pytest.mark.parametrize(['lineterminator'], [(b'\n',), (b'--',)])
+def test_readline(hdfs, lineterminator):
+    with hdfs.open(a, 'w') as f:
+        f.write(lineterminator.join([b'123', b'456', b'789']))
+
+    with hdfs.open(a) as f:
+        assert f.readline(lineterminator=lineterminator) == '123'
+        assert f.readline(lineterminator=lineterminator) == '456'
+        assert f.readline(lineterminator=lineterminator) == '789'
+        with pytest.raises(EOFError):
+            f.readline()

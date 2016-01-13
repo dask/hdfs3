@@ -504,11 +504,12 @@ class HDFile(object):
 
         return b''.join(buffers)
 
-    def readline(self):
+    def readline(self, chunksize=2**16, lineterminator='\n'):
         """ Read a buffered line, text mode. """
+        lineterminator = ensure_string(lineterminator)
         lines = getattr(self, 'lines', [])
         if len(lines) < 1:
-            buff = self.read()
+            buff = self.read(chunksize)
             if len(buff) == 0:   #EOF
                 remains = self.buffer.decode(self.encoding)
                 if remains:
@@ -516,7 +517,7 @@ class HDFile(object):
                     return remains
                 raise EOFError
             buff = (self.buffer + buff).decode(self.encoding)
-            self.lines = buff.split('\n')
+            self.lines = buff.split(lineterminator)
         return self.lines.pop(0)
 
     def _genline(self):
