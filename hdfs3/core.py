@@ -17,6 +17,8 @@ except (ImportError, OSError):
 PY3 = sys.version_info.major > 2
 
 from .compatibility import FileNotFoundError, PermissionError, urlparse
+from .utils import seek_delimiter, read_block
+
 
 def hdfs_conf():
     """ Load HDFS config from default locations. """
@@ -396,6 +398,43 @@ class HDFileSystem(object):
     def touch(self, path):
         """ Create zero-length file """
         self.open(path, 'w').close()
+
+    def read_block(self, fn, offset, length, delimiter=None):
+        """ Read a block of bytes from an HDFS file
+
+        Parameters
+        ----------
+        fn: string
+            Path to filename on HDFS
+        offset: int
+            Byte offset to start read
+        length: int
+            Number of bytes to read
+        delimiter: bytes (optional)
+            Ensure reading starts and stops at delimiter bytestring
+
+        If using the ``delimiter=`` keyword argument we ensure that the read
+        starts and stops at delimiter boundaries that follow the locations
+        ``offset`` and ``offset + length``.  If ``offset`` is zero then we
+        start at zero.  The bytestring returned will not include the
+        surrounding delimiter strings.
+
+        Examples
+        --------
+
+        >>> hdfs.read_block('/data/file.csv', 0, 13)  # doctest: +SKIP
+        b'Alice, 100\\nBo'
+
+        >>> hdfs.read_block('/data/file.csv', 0, 13, delimiter=b'\\n')  # doctest: +SKIP
+        b'Alice, 100\\nBob, 200'
+
+        See Also
+        --------
+        hdfs3.utils.read_block
+        """
+        with self.open(fn, 'r') as f:
+            bytes = read_block(f, offset, length, delimiter)
+        return bytes
 
 
 def struct_to_dict(s):

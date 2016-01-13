@@ -284,3 +284,28 @@ def test_conf(conffile):
              'dfs.permissions.superusergroup': 'hadoop',
              'dfs.replication': 3}
     assert conf_to_dict(conffile) == should
+
+
+def test_read_delimited_block(hdfs):
+    fn = '/tmp/test/a'
+    delimiter = b'\n'
+    data = delimiter.join([b'123', b'456', b'789'])
+
+    with hdfs.open(fn, 'w') as f:
+        f.write(data)
+
+    assert hdfs.read_block(fn, 1, 2) == b'23'
+    assert hdfs.read_block(fn, 0, 1, delimiter=b'\n') == b'123'
+    assert hdfs.read_block(fn, 0, 2, delimiter=b'\n') == b'123'
+    assert hdfs.read_block(fn, 0, 3, delimiter=b'\n') == b'123'
+    assert hdfs.read_block(fn, 0, 5, delimiter=b'\n') == b'123\n456'
+    assert hdfs.read_block(fn, 0, 8, delimiter=b'\n') == b'123\n456\n789'
+    assert hdfs.read_block(fn, 0, 100, delimiter=b'\n') == b'123\n456\n789'
+    assert hdfs.read_block(fn, 1, 1, delimiter=b'\n') == b''
+    assert hdfs.read_block(fn, 1, 5, delimiter=b'\n') == b'456'
+    assert hdfs.read_block(fn, 1, 8, delimiter=b'\n') == b'456\n789'
+
+    for ols in [[(0, 3), (3, 3), (6, 3), (9, 2)],
+                [(0, 4), (4, 4), (8, 4)]]:
+        out = [hdfs.read_block(fn, o, l, b'\n') for o, l in ols]
+        assert delimiter.join(filter(None, out)) == data
