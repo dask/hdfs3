@@ -17,7 +17,7 @@ except (ImportError, OSError):
 PY3 = sys.version_info.major > 2
 
 from .compatibility import FileNotFoundError, PermissionError, urlparse
-from .utils import seek_delimiter
+from .utils import seek_delimiter, read_block
 
 
 def hdfs_conf():
@@ -400,7 +400,7 @@ class HDFileSystem(object):
         self.open(path, 'w').close()
 
     def read_block(self, fn, offset, length, delimiter=None):
-        """ Read a block of bytes from a file
+        """ Read a block of bytes from an HDFS file
 
         Parameters
         ----------
@@ -423,31 +423,17 @@ class HDFileSystem(object):
         --------
 
         >>> hdfs.read_block('/data/file.csv', 0, 13)  # doctest: +SKIP
-        b'Alice, 100\nBob, '
+        b'Alice, 100\\nBo'
 
         >>> hdfs.read_block('/data/file.csv', 0, 13, delimiter=b'\\n')  # doctest: +SKIP
-        b'Alice, 100\nBob, 200'
+        b'Alice, 100\\nBob, 200'
+
+        See Also
+        --------
+        hdfs3.utils.read_block
         """
         with self.open(fn, 'r') as f:
-            if delimiter:
-                f.seek(offset)
-                seek_delimiter(f, delimiter, 2**16)
-                start = f.tell()
-                length -= start - offset
-
-                f.seek(start + length)
-                seek_delimiter(f, delimiter, 2**16)
-                end = f.tell()
-                eof = not f.read(1)
-
-                offset = start
-                length = end - start
-
-                if length and not eof:
-                    length -= len(delimiter)
-
-            f.seek(offset)
-            bytes = f.read(length)
+            bytes = read_block(f, offset, length, delimiter)
         return bytes
 
 
