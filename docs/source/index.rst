@@ -40,6 +40,20 @@ Use it to read data directly from HDFS into the local Python process:
        bytes = f.read(1000000)
 
 
+CLI
+---
+
+You can also use ``hdfs3`` via a command line interface (CLI):
+
+.. code-block:: bash
+
+   $ hdfs3 ls /
+
+   $ hdfs3 put local.csv /tmp/remote.csv
+
+   $ hdfs3 du
+
+
 Install
 -------
 
