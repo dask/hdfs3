@@ -67,15 +67,14 @@ default JVM client for convenience and performance reasons:
 Short-circuit reads in HDFS
 ---------------------------
 
-Typically in HDFS, all data reads go through the datanode. Alternatively, it
-is possible to bypass the communication path through the datanode and read
-directly from a file. This is useful in cases where we know the locations of
-data blocks and can improve read speeds.
+Typically in HDFS, all data reads go through the datanode. Alternatively, a
+process that runs on the same node as the data to bypass or `short-circuit` the
+communication path through the datanode and instead read directly from a file.
 
 HDFS and ``hdfs3`` can be configured for short-circuit reads using the
 following two steps:
 
-* Set the ``LIBHDFS3_CONF`` environment vairable to the location of the
+* Set the ``LIBHDFS3_CONF`` environment variable to the location of the
   hdfs-site.xml configuration file (e.g.,
   ``export LIBHDFS3_CONF=/etc/hadoop/conf/hdfs-site.xml``).
 
@@ -94,6 +93,10 @@ following two steps:
       <value>/var/lib/hadoop-hdfs/dn_socket</value>
     </property>
   </configuration>
+
+Note that you might get HDFS warnings similar to ``retry the same node but
+disable read shortcircuit feature`` without the above two configuration
+changes, but the reads should still function.
 
 For more information about configuring short-circuit reads, refer to the
 `HDFS Short-Circuit Local Reads
