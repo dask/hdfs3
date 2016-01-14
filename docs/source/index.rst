@@ -68,8 +68,9 @@ Short-circuit reads in HDFS
 ---------------------------
 
 Typically in HDFS, all data reads go through the datanode. Alternatively, a
-process that runs on the same node as the data to bypass or `short-circuit` the
-communication path through the datanode and instead read directly from a file.
+process that runs on the same node as the data can bypass or `short-circuit`
+the communication path through the datanode and instead read directly from a
+file.
 
 HDFS and ``hdfs3`` can be configured for short-circuit reads using the
 following two steps:
