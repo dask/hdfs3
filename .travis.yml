@@ -13,9 +13,9 @@ before_install:
   - pwd
   - echo $PYTHON_VERSION
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2" ]]; then
-      export DOCKER_ENV=/opt/conda
+      export DOCKER_ENV=/opt/conda;
     else
-      export DOCKER_ENV=/opt/conda/envs/py3
+      export DOCKER_ENV=/opt/conda/envs/py3;
     fi
   - pushd continuous_integration
   - docker build -t libhdfs3.hdfs .
