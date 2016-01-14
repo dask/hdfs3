@@ -97,8 +97,9 @@ def ensure_trailing_slash(s):
     >>> ensure_trailing_slash('/user/directory/')
     '/user/directory/'
     """
-    if not s.endswith('/'):
-        s += '/'
+    slash = '/' if isinstance(s, str) else b'/'
+    if not s.endswith(slash):
+        s += slash
     return s
 
 
