@@ -20,7 +20,9 @@ before_install:
 install:
   - pwd
   - docker exec -it $CONTAINER_ID python setup.py install
+  - docker exec -it $CONTAINER_ID /opt/conda/envs/py3/bin/python setup.py install
 
 script:
   - pwd
   - docker exec -it $CONTAINER_ID py.test hdfs3 -s -vv
+  - docker exec -it $CONTAINER_ID /opt/conda/envs/py3/bin/py.test hdfs3 -s -vv

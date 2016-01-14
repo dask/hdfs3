@@ -9,9 +9,11 @@ ENV PATH /opt/conda/bin:$PATH
 
 # hdfs3 - python
 ENV LIBHDFS3_CONF /etc/hadoop/conf/hdfs-site.xml
-RUN /opt/conda/bin/conda install -y -q ipython pytest
-RUN /opt/conda/bin/conda install -y -q libhdfs3 -c blaze
-# RUN /opt/conda/bin/pip install versioneer pywebhdfs click
+RUN conda install -y -q ipython pytest
+RUN conda install -y -q libhdfs3 -c blaze
+RUN conda create -y -n py3 python=3
+RUN conda install -y -n py3 ipython pytest
+RUN conda install -y -n py3 libhdfs3 -c blaze
 
 # Cloudera repositories
 RUN curl -s http://archive.cloudera.com/cdh5/ubuntu/trusty/amd64/cdh/archive.key | apt-key add -
