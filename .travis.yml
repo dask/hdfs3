@@ -1,11 +1,8 @@
 language: python
 
-matrix:
-  include:
-    - env: PYTHON_VERSION=2
-      env: DOCKER_ENV=/opt/conda
-    - env: PYTHON_VERSION=3
-      env: DOCKER_ENV=/opt/conda/envs/py3
+python:
+  - 2.7
+  - 3.5
 
 sudo: true
 
@@ -14,6 +11,12 @@ services:
 
 before_install:
   - pwd
+  - echo $PYTHON_VERSION
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "2" ]]; then
+      export DOCKER_ENV=/opt/conda
+    else
+      export DOCKER_ENV=/opt/conda/envs/py3
+    fi
   - pushd continuous_integration
   - docker build -t libhdfs3.hdfs .
   - popd
@@ -23,8 +26,7 @@ before_install:
 
 install:
   - pwd
-  - echo PYTHON_VERSION
-  - echo DOCKER_ENV
+  - echo $DOCKER_ENV
   - docker exec -it $CONTAINER_ID $DOCKER_ENV/bin/python setup.py install
 
 script:
