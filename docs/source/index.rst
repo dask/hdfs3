@@ -1,14 +1,16 @@
-Welcome to hdfs3's documentation!
-=================================
+HDFS3
+=====
 
-Python wrapper for libhdfs3, a native library to interact with the Hadoop File
-System.
+A Python wrapper for ``libhdfs3``, a native client library for the Hadoop
+File System.
 
 The `Hadoop File System`_ (HDFS) is a widely deployed, distributed, data-local
-file system written in Java.  libhdfs3_ is an alternative native C/C++ HDFS
-client that interacts with HDFS without the JVM.  This library, ``hdfs3``, is a
-Python wrapper around the C/C++ libhdfs3 library.  It provides both direct
-access to libhdfs3 from Python as well as a typical Pythonic interface.
+file system written in Java.  Pivotal produced libhdfs3_, an alternative native
+C/C++ HDFS client that interacts with HDFS without the JVM.
+
+The ``hdfs3`` library, is a lightweight Python wrapper around the C/C++
+``libhdfs3`` library.  It provides both direct access to libhdfs3 from Python
+as well as a typical Pythonic interface.
 
 Example
 -------
@@ -20,7 +22,7 @@ HDFS3 is easy to setup:
    from hdfs3 import HDFileSystem
    hdfs = HDFileSystem(host='localhost', port=8020)
 
-Use it to manage files on HDFS
+Use it to manage files on HDFS:
 
 .. code-block:: python
 
@@ -48,11 +50,12 @@ Python project are available via conda on the ``blaze`` channel::
 
 Note that packages are only available for the ``linux-64`` platform.
 
+
 Motivation
 ----------
 
 We choose to use an alternative C/C++/Python HDFS client rather than the
-default JVM client for convenience and performance reasons.
+default JVM client for convenience and performance reasons:
 
 *  Convenience: Interactions between Java libraries and Native (C/C++/Python)
    libraries can be cumbersome and causes frustration in development,
@@ -96,6 +99,14 @@ For more information about configuring short-circuit reads, refer to the
 `HDFS Short-Circuit Local Reads
 <https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/ShortCircuitLocalReads.html>`_ documentation.
 
+
+Related Work
+------------
+
+* libhdfs3_: The underlying C++ library
+* snakebite_: Another Python HDFS library using Protobufs
+
+
 API
 ---
 
@@ -110,3 +121,4 @@ API
 
 .. _`Hadoop File System`: https://en.wikipedia.org/wiki/Apache_Hadoop
 .. _libhdfs3: http://pivotalrd.github.io/libhdfs3/
+.. _snakebite: http://snakebite.readthedocs.org/en/latest/
