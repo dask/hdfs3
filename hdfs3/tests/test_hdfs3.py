@@ -1,6 +1,6 @@
 from hdfs3 import HDFileSystem, lib
 from hdfs3.core import conf_to_dict
-from hdfs3.compatibility import FileNotFoundError, PermissionError
+from hdfs3.compatibility import PermissionError
 import pytest
 import ctypes
 import os
@@ -19,10 +19,10 @@ def hdfs():
         hdfs.rm('/tmp/test')
 
 
-a = '/tmp/test/a'
-b = '/tmp/test/b'
-c = '/tmp/test/c'
-d = '/tmp/test/d'
+a = b'/tmp/test/a'
+b = b'/tmp/test/b'
+c = b'/tmp/test/c'
+d = b'/tmp/test/d'
 
 
 def test_example(hdfs):
@@ -58,10 +58,10 @@ def test_pickle(hdfs):
     with hdfs.open(a, 'w', repl=1) as f:
         f.write(data)
 
-    assert hdfs._handle > 0
+    assert hdfs._handle
     import pickle
     hdfs2 = pickle.loads(pickle.dumps(hdfs))
-    assert hdfs2._handle > 0
+    assert hdfs2._handle
 
     hdfs2.touch(b)
     hdfs2.ls(b)
@@ -118,35 +118,35 @@ def test_write_blocksize(hdfs):
 
 
 def test_errors(hdfs):
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises((IOError, OSError)):
         hdfs.open('/tmp/test/shfoshf', 'r')
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises((IOError, OSError)):
         hdfs.touch('/tmp/test/shfoshf/x')
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises((IOError, OSError)):
         hdfs.rm('/tmp/test/shfoshf/x')
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises((IOError, OSError)):
         hdfs.mv('/tmp/test/shfoshf/x', '/tmp/test/shfoshf/y')
 
-    with pytest.raises(PermissionError):
+    with pytest.raises((IOError, OSError)):
         hdfs.open('/x', 'w')
 
-    with pytest.raises(PermissionError):
+    with pytest.raises((IOError, OSError)):
         hdfs.open('/x', 'r')
 
 
 def test_glob(hdfs):
     hdfs.mkdir('/tmp/test/c/')
     hdfs.mkdir('/tmp/test/c/d/')
-    filenames = ['a1', 'a2', 'a3', 'b1', 'c/x1', 'c/x2', 'c/d/x3']
-    filenames = ['/tmp/test/' + s for s in filenames]
+    filenames = [b'a1', b'a2', b'a3', b'b1', b'c/x1', b'c/x2', b'c/d/x3']
+    filenames = [b'/tmp/test/' + s for s in filenames]
     for fn in filenames:
         hdfs.touch(fn)
 
-    assert set(hdfs.glob('/tmp/test/a*')) == set(['/tmp/test/' + a
-                                              for a in ['a1', 'a2', 'a3']])
+    assert set(hdfs.glob('/tmp/test/a*')) == set([b'/tmp/test/' + a
+                                              for a in [b'a1', b'a2', b'a3']])
     assert len(hdfs.glob('/tmp/test/c/')) == 4
     assert set(hdfs.glob('/tmp/test/')).issuperset(filenames)
 
