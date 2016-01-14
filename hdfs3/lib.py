@@ -5,8 +5,6 @@ Low-level interface to libhdfs3
 
 import sys
 import ctypes as ct
-import os
-import subprocess
 
 PY3 = sys.version_info.major > 2
 
@@ -18,15 +16,7 @@ We use subprocess to call conda-info and parse the output.
 This is brittle both to changes in conda info and in cases where users don't
 install libhdfs3 through conda.
 """
-
-proc = subprocess.Popen(['conda', 'info'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-out, err = proc.communicate()
-conda_directory = next(line for line in out.split(b'\n')
-            if "default environment" in line.decode())
-conda_directory = conda_directory.decode().split(':')[-1].strip()
-so_directory = os.path.join(conda_directory, 'lib')
-
-_lib = ct.cdll.LoadLibrary(os.sep.join([so_directory, 'libhdfs3.so']))
+_lib = ct.cdll.LoadLibrary('libhdfs3.so')
 
 
 tSize = ct.c_int32
