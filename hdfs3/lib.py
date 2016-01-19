@@ -8,14 +8,6 @@ import ctypes as ct
 
 PY3 = sys.version_info.major > 2
 
-""" Find libhdfs3 file
-
-At the moment we assume the libhdfs3.so file has been installed by conda.
-We use subprocess to call conda-info and parse the output.
-
-This is brittle both to changes in conda info and in cases where users don't
-install libhdfs3 through conda.
-"""
 _lib = ct.cdll.LoadLibrary('libhdfs3.so')
 
 
