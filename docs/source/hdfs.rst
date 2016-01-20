@@ -1,6 +1,13 @@
 HDFS Configuration
 ==================
 
+Defaults
+--------
+
+This library tries to find ``core-site.xml`` and ``hdfs-site.xml`` in typical
+locations and reads default configuration parameters from there.  They may also
+be specified manually when constructing the ``HDFileSystem`` object.
+
 Short-circuit reads in HDFS
 ---------------------------
 

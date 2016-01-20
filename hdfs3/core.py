@@ -400,6 +400,12 @@ class HDFileSystem(object):
     def read_block(self, fn, offset, length, delimiter=None):
         """ Read a block of bytes from an HDFS file
 
+        Starting at ``offset`` of the file, read ``length`` bytes.  If
+        ``delimiter`` is set then we ensure that the read starts and stops at
+        delimiter boundaries that follow the locations ``offset`` and ``offset
+        + length``.  If ``offset`` is zero then we start at zero.  The
+        bytestring returned will not include the surrounding delimiter strings.
+
         Parameters
         ----------
         fn: string
@@ -411,18 +417,10 @@ class HDFileSystem(object):
         delimiter: bytes (optional)
             Ensure reading starts and stops at delimiter bytestring
 
-        If using the ``delimiter=`` keyword argument we ensure that the read
-        starts and stops at delimiter boundaries that follow the locations
-        ``offset`` and ``offset + length``.  If ``offset`` is zero then we
-        start at zero.  The bytestring returned will not include the
-        surrounding delimiter strings.
-
         Examples
         --------
-
         >>> hdfs.read_block('/data/file.csv', 0, 13)  # doctest: +SKIP
         b'Alice, 100\\nBo'
-
         >>> hdfs.read_block('/data/file.csv', 0, 13, delimiter=b'\\n')  # doctest: +SKIP
         b'Alice, 100\\nBob, 200'
 

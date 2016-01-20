@@ -18,14 +18,14 @@ as well as a typical Pythonic interface.
    >>> hdfs = HDFileSystem(host='localhost', port=8020)
 
    >>> hdfs.ls('/user/data')
-   
+
    >>> hdfs.put('local-file.txt', '/user/data/remote-file.txt')
-   
+
    >>> hdfs.cp('/user/data/file.txt', '/user2/data')
 
    >>> with hdfs.open('/user/data/file.txt') as f:
-           f.seek(2000)
-           bytes = f.read(1000000)
+   ...     f.seek(2000)
+   ...     bytes = f.read(1000000)
 
 Refer to the following documentation to get started with `hdfs3`:
 
@@ -58,7 +58,6 @@ Related Work
 
    install
    quickstart
-   cli
    hdfs
    api
 
