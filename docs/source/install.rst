@@ -6,6 +6,6 @@ Python project are available via conda on the ``blaze`` channel::
 
 .. code-block:: bash
 
-   $ conda install -c blaze hdfs3
+   $ conda install hdfs3 -c blaze
 
 Note that packages are only available for the ``linux-64`` platform.

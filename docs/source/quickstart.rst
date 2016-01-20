@@ -5,7 +5,7 @@ Install `hdfs3` and its dependencies:
 
 .. code-block:: bash
 
-   $ conda install hdfs3
+   $ conda install hdfs3 -c blaze
 
 Import `hdfs3` and connect to an HDFS cluster:
 
