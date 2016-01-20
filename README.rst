@@ -1,4 +1,4 @@
-HDFS3
+hdfs3
 =====
 
 |Build Status|
