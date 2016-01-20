@@ -2,7 +2,7 @@ Installation
 ============
 
 Both the compiled ``libhdfs3`` library (and its dependencies) and the ``hdfs3``
-Python project are available via conda on the ``blaze`` channel::
+Python project are available via conda on the ``blaze`` channel:
 
 .. code-block:: bash
 
