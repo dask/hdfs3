@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import ctypes
 import fnmatch
+import logging
 import os
 import re
 import subprocess
@@ -15,6 +16,9 @@ PY3 = sys.version_info.major > 2
 
 from .compatibility import FileNotFoundError, PermissionError, urlparse
 from .utils import seek_delimiter, read_block
+
+
+logger = logging.getLogger(__name__)
 
 
 def hdfs_conf():
@@ -149,6 +153,7 @@ class HDFileSystem(object):
     def __getstate__(self):
         d = self.__dict__.copy()
         del d['_handle']
+        logger.debug("Serialize with state: %s", d)
         return d
 
     def __setstate__(self, state):
@@ -180,6 +185,7 @@ class HDFileSystem(object):
                     warnings.warn('Setting conf parameter %s failed' % par)
         fs = _lib.hdfsBuilderConnect(o)
         if fs:
+            logger.debug("Connect to handle %d", fs.contents.filesystem)
             self._handle = fs
             #if self.token:   # TODO: find out what a delegation token is
             #    self._token = _lib.hdfsGetDelegationToken(self._handle,
@@ -190,6 +196,7 @@ class HDFileSystem(object):
     def disconnect(self):
         """ Disconnect from name node """
         if self._handle:
+            logger.debug("Disconnect from handle %d", self._handle.contents.filesystem)
             _lib.hdfsDisconnect(self._handle)
         self._handle = None
 
@@ -265,6 +272,7 @@ class HDFileSystem(object):
         return out
 
     def glob(self, path):
+        path = ensure_string(path)
         if "*" not in path:
             path = path + "*"
         if '/' in path[:path.index('*')]:

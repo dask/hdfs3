@@ -1,10 +1,19 @@
+import ctypes
+import multiprocessing
+from multiprocessing import Process, Queue
+import os
+import tempfile
+import sys
+from random import randint
+from threading import Thread
+import threading
+
+import pytest
+
 from hdfs3 import HDFileSystem, lib
 from hdfs3.core import conf_to_dict
 from hdfs3.compatibility import PermissionError
-import pytest
-import ctypes
-import os
-import tempfile
+
 
 @pytest.yield_fixture
 def hdfs():
@@ -322,3 +331,82 @@ def test_readline(hdfs, lineterminator):
         assert f.readline(lineterminator=lineterminator) == '789'
         with pytest.raises(EOFError):
             f.readline()
+
+
+def read_write(hdfs, i):
+    hdfs.df()
+    hdfs.du('/', True, True)
+    data = b'0' * 10000
+    with hdfs.open('/tmp/test/%d' % i, 'w') as f:
+        f.write(data)
+    with hdfs.open('/tmp/test/%d' % i, 'r') as f:
+        data2 = f.read()
+    assert data == data2
+
+
+@pytest.mark.skipif(sys.version_info < (3, 4), reason='No spawn')
+def test_stress_embarrassing(hdfs):
+    if sys.version_info < (3, 4):
+        return
+
+    ctx = multiprocessing.get_context('spawn')
+    for proc in [Thread, ctx.Process]:
+        threads = [proc(target=read_write, args=(hdfs, i)) for
+                   i in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+
+def read_random_block(hdfs, fn, n, delim):
+    for i in range(10):
+        hdfs.read_block(fn, randint(0, n/2), randint(n/2, n), delim)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 4), reason='No spawn')
+def test_stress_read_block(hdfs):
+    ctx = multiprocessing.get_context('spawn')
+
+    for T in (Thread, ctx.Process,):
+        n = 10000
+        with hdfs.open(a, 'w') as f:
+            f.write(b'\n'.join(b"%i,%i" % (i, i**2) for i in range(n)))
+
+        threads = [T(target=read_random_block, args=(hdfs, a, n, b'\n'))
+                    for i in range(10)]
+        for t in threads:
+            t.daemon = True
+            t.start()
+        for t in threads:
+            t.join()
+
+
+def test_different_handles():
+    a = HDFileSystem(host='localhost', port=8020)
+    b = HDFileSystem(host='localhost', port=8020)
+    assert a._handle.contents.filesystem != b._handle.contents.filesystem
+
+
+def handle(q):
+    hdfs = HDFileSystem(host='localhost', port=8020)
+    q.put(hdfs._handle.contents.filesystem)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 4), reason='No spawn')
+def test_different_handles_in_processes():
+    ctx = multiprocessing.get_context('spawn')
+
+    hdfs = HDFileSystem(host='localhost', port=8020)
+    q = ctx.Queue()
+    n = 20
+    procs = [ctx.Process(target=handle, args=(q,)) for i in range(n)]
+    for p in procs:
+        p.daemon = True
+        p.start()
+
+    s = {q.get() for i in range(n)}
+    assert not any(i == hdfs._handle.contents.filesystem for i in s)
+
+    for p in procs:
+        p.join()
