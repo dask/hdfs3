@@ -367,14 +367,14 @@ def read_random_block(hdfs, fn, n, delim):
 @pytest.mark.skipif(sys.version_info < (3, 4), reason='No spawn')
 def test_stress_read_block(hdfs):
     ctx = multiprocessing.get_context('spawn')
+    data = b'hello, world!\n' * 10000
 
     for T in (Thread, ctx.Process,):
-        n = 10000
         with hdfs.open(a, 'w') as f:
-            f.write(b'\n'.join(b"%i,%i" % (i, i**2) for i in range(n)))
+            f.write(data)
 
-        threads = [T(target=read_random_block, args=(hdfs, a, n, b'\n'))
-                    for i in range(10)]
+        threads = [T(target=read_random_block, args=(hdfs, a, len(data), b'\n'))
+                    for i in range(4)]
         for t in threads:
             t.daemon = True
             t.start()
