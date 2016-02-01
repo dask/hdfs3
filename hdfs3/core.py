@@ -552,7 +552,7 @@ class HDFile(object):
                 raise StopIteration
 
     def __iter__(self):
-        "Enables `for line in file:` usage"
+        """ Enables `for line in file:` usage """
         return self._genline()
 
     def readlines(self):
@@ -565,7 +565,7 @@ class HDFile(object):
         return out
 
     def seek(self, loc):
-        " Set file read position."
+        """ Set file read position."""
         info = self.info()
         loc = min(loc, info['size'])
         out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(loc))
