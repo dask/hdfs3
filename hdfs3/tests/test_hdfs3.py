@@ -52,6 +52,8 @@ def test_ls_touch(hdfs):
     hdfs.touch(b)
     L = hdfs.ls('/tmp/test')
     assert set(d['name'] for d in L) == set([a, b])
+    L = hdfs.ls('/tmp/test', False)
+    assert set(L) == set([a, b])
 
 
 def test_rm(hdfs):
@@ -146,7 +148,7 @@ def test_errors(hdfs):
         hdfs.open('/x', 'r')
 
 
-def test_glob(hdfs):
+def test_walk(hdfs):
     hdfs.mkdir('/tmp/test/c/')
     hdfs.mkdir('/tmp/test/c/d/')
     filenames = [b'a', b'a1', b'a2', b'a3', b'b1', b'c/x1', b'c/x2', b'c/d/x3']
@@ -154,11 +156,11 @@ def test_glob(hdfs):
     for fn in filenames:
         hdfs.touch(fn)
 
-    assert set(hdfs.glob('/tmp/test/a*')) == set([b'/tmp/test/' + a
+    assert set(hdfs.walk('/tmp/test/a*')) == set([b'/tmp/test/' + a
                for a in [b'a', b'a1', b'a2', b'a3']])
-    assert len(hdfs.glob('/tmp/test/c/')) == 4
-    assert set(hdfs.glob('/tmp/test/')).issuperset(filenames)
-    assert set(hdfs.glob('/tmp/test/a')) == {b'/tmp/test/a'}
+    assert len(hdfs.walk('/tmp/test/c/')) == 4
+    assert set(hdfs.walk('/tmp/test/')).issuperset(filenames)
+    assert set(hdfs.walk('/tmp/test/a')) == {b'/tmp/test/a'}
 
 
 def test_info(hdfs):

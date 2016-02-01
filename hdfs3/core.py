@@ -271,8 +271,8 @@ class HDFileSystem(object):
         _lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
         return out
 
-    def glob(self, path):
-        """ Get list of paths mathing globstring (i.e., with "*"s).
+    def walk(self, path):
+        """ Get list of paths mathing glob-like pattern (i.e., with "*"s).
 
         If passed a directory, gets all contained files; if passed path
         to a file, without any "*", returns one-element list containing that
@@ -296,14 +296,22 @@ class HDFileSystem(object):
         out = [f for f in allfiles if fnmatch.fnmatch(ensure_string(f), path)]
         return out
 
-    def ls(self, path):
+    def ls(self, path, l=True):
+        """ List files at path
+
+        if l==True (default), each list item is a dict of file properties;
+        otherwise, returns list of filenames
+        """
         if not self.exists(path):
             raise FileNotFoundError(path)
         num = ctypes.c_int(0)
         fi = _lib.hdfsListDirectory(self._handle, ensure_byte(path), ctypes.byref(num))
         out = [info_to_dict(fi[i]) for i in range(num.value)]
         _lib.hdfsFreeFileInfo(fi, num.value)
-        return out
+        if l:
+            return out
+        else:
+            return [o['name'] for o in out]
 
     def __repr__(self):
         state = ['Disconnected', 'Connected'][self._handle is not None]
