@@ -273,8 +273,14 @@ class HDFileSystem(object):
 
     def glob(self, path):
         path = ensure_string(path)
-        if "*" not in path:
-            path = path + "*"
+        try:
+            f = self.info(path)
+            if f['kind'] == 'directory' and "*" not in path:
+                path = path + "*"
+            else:
+                return [f['name']]
+        except IOError:
+            pass
         if '/' in path[:path.index('*')]:
             ind = path[:path.index('*')].rindex('/')
             root = path[:ind+1]

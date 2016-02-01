@@ -149,15 +149,16 @@ def test_errors(hdfs):
 def test_glob(hdfs):
     hdfs.mkdir('/tmp/test/c/')
     hdfs.mkdir('/tmp/test/c/d/')
-    filenames = [b'a1', b'a2', b'a3', b'b1', b'c/x1', b'c/x2', b'c/d/x3']
+    filenames = [b'a', b'a1', b'a2', b'a3', b'b1', b'c/x1', b'c/x2', b'c/d/x3']
     filenames = [b'/tmp/test/' + s for s in filenames]
     for fn in filenames:
         hdfs.touch(fn)
 
     assert set(hdfs.glob('/tmp/test/a*')) == set([b'/tmp/test/' + a
-                                              for a in [b'a1', b'a2', b'a3']])
+               for a in [b'a', b'a1', b'a2', b'a3']])
     assert len(hdfs.glob('/tmp/test/c/')) == 4
     assert set(hdfs.glob('/tmp/test/')).issuperset(filenames)
+    assert set(hdfs.glob('/tmp/test/a')) == {b'/tmp/test/a'}
 
 
 def test_info(hdfs):
