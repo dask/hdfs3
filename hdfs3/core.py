@@ -413,6 +413,12 @@ class HDFileSystem(object):
             f.seek(length - size)
             return f.read(size)
 
+    def head(self, path, size=None):
+        """ Return last bytes of file """
+        size = int(size) or 1024
+        with self.open(path, 'r') as f:
+            return f.read(size)
+
     def touch(self, path):
         """ Create zero-length file """
         self.open(path, 'w').close()

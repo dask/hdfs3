@@ -237,11 +237,12 @@ def test_full_read(hdfs):
         assert f.read(4) == b'789'
         assert f.tell() == 10
 
-def test_tail(hdfs):
+def test_tail_head(hdfs):
     with hdfs.open(a, 'w') as f:
         f.write(b'0123456789')
 
     assert hdfs.tail(a, 3) == b'789'
+    assert hdfs.head(a, 3) == b'012'
 
 @pytest.yield_fixture
 def conffile():
