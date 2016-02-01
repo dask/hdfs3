@@ -272,6 +272,12 @@ class HDFileSystem(object):
         return out
 
     def glob(self, path):
+        """ Get list of paths mathing globstring (i.e., with "*"s).
+
+        If passed a directory, gets all contained files; if passed path
+        to a file, without any "*", returns one-element list containing that
+        filename.
+        """
         path = ensure_string(path)
         try:
             f = self.info(path)
@@ -517,8 +523,12 @@ class HDFile(object):
 
         Reads and caches chunksize bytes of data, and caches lines
         locally. Subsequent readline calls deplete those lines until
-        empty, when a new chunk will be read. Mixing readline with
-        read is not recommended.
+        empty, when a new chunk will be read. A read and readline are
+        not therefore generally pointing to the same location in the file;
+        `seek()` and `tell()` will give the true location in the file,
+        which will be one chunk in even after calling `readline` once.
+
+        Line iteration uses this method internally.
         """
         lineterminator = ensure_byte(lineterminator)
         lines = getattr(self, 'lines', [])
