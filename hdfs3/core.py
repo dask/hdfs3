@@ -464,8 +464,6 @@ class HDFile(object):
         self._fs = fs._handle
         self.buffer = b''
         self._handle = None
-        self.encoding = 'ascii'
-        m = [mode]
         self.mode = mode
         self.block_size = block_size
         self._set_handle()
@@ -509,18 +507,24 @@ class HDFile(object):
         return b''.join(buffers)
 
     def readline(self, chunksize=2**16, lineterminator='\n'):
-        """ Read a buffered line, text mode. """
+        """ Read a buffered line, text mode. 
+
+        Reads and caches chunksize bytes of data, and caches lines
+        locally. Subsequent readline calls deplete those lines until
+        empty, when a new chunk will be read. Mixing readline with
+        read is not recommended.
+        """
         lineterminator = ensure_string(lineterminator)
         lines = getattr(self, 'lines', [])
         if len(lines) < 1:
             buff = self.read(chunksize)
             if len(buff) == 0:   #EOF
-                remains = self.buffer.decode(self.encoding)
+                remains = self.buffer
                 if remains:
                     self.buffer = b''
                     return remains
                 raise EOFError
-            buff = (self.buffer + buff).decode(self.encoding)
+            buff = (self.buffer + buff)
             self.lines = buff.split(lineterminator)
         return self.lines.pop(0)
 
@@ -532,6 +536,7 @@ class HDFile(object):
                 raise StopIteration
 
     def __iter__(self):
+        "Enables `for line in file:` usage"
         return self._genline()
 
     def readlines(self):
@@ -544,6 +549,7 @@ class HDFile(object):
         return out
 
     def seek(self, loc):
+        " Set file read position."
         info = self.info()
         loc = min(loc, info['size'])
         out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(loc))
