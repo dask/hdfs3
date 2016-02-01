@@ -148,7 +148,7 @@ def test_errors(hdfs):
         hdfs.open('/x', 'r')
 
 
-def test_walk(hdfs):
+def test_glob_walk(hdfs):
     hdfs.mkdir('/tmp/test/c/')
     hdfs.mkdir('/tmp/test/c/d/')
     filenames = [b'a', b'a1', b'a2', b'a3', b'b1', b'c/x1', b'c/x2', b'c/d/x3']
@@ -156,11 +156,12 @@ def test_walk(hdfs):
     for fn in filenames:
         hdfs.touch(fn)
 
-    assert set(hdfs.walk('/tmp/test/a*')) == set([b'/tmp/test/' + a
+    assert set(hdfs.glob('/tmp/test/a*')) == set([b'/tmp/test/' + a
                for a in [b'a', b'a1', b'a2', b'a3']])
-    assert len(hdfs.walk('/tmp/test/c/')) == 4
-    assert set(hdfs.walk('/tmp/test/')).issuperset(filenames)
-    assert set(hdfs.walk('/tmp/test/a')) == {b'/tmp/test/a'}
+    assert len(hdfs.glob('/tmp/test/c/')) == 4
+    assert set(hdfs.glob('/tmp/test/')).issuperset(filenames)
+    assert set(hdfs.glob('/tmp/test/')) == set(hdfs.walk('/tmp/test/'))
+    assert set(hdfs.glob('/tmp/test/a')) == {b'/tmp/test/a'}
 
 
 def test_info(hdfs):

@@ -272,6 +272,10 @@ class HDFileSystem(object):
         return out
 
     def walk(self, path):
+        """ Get all file entries below given path """
+        return self.du(path, False, True).keys()
+
+    def glob(self, path):
         """ Get list of paths mathing glob-like pattern (i.e., with "*"s).
 
         If passed a directory, gets all contained files; if passed path
@@ -292,14 +296,19 @@ class HDFileSystem(object):
             root = path[:ind+1]
         else:
             root = '/'
-        allfiles = self.du(root, False, True).keys()
+        allfiles = self.walk(root)
         out = [f for f in allfiles if fnmatch.fnmatch(ensure_string(f), path)]
         return out
 
-    def ls(self, path, l=True):
+    def ls(self, path, detail=True):
         """ List files at path
 
-        if l==True (default), each list item is a dict of file properties;
+        Parameters
+        ----------
+        path : string/bytes
+            location at which to list files
+        detatil : bool (=True)
+            if True, each list item is a dict of file properties;
         otherwise, returns list of filenames
         """
         if not self.exists(path):
@@ -308,7 +317,7 @@ class HDFileSystem(object):
         fi = _lib.hdfsListDirectory(self._handle, ensure_byte(path), ctypes.byref(num))
         out = [info_to_dict(fi[i]) for i in range(num.value)]
         _lib.hdfsFreeFileInfo(fi, num.value)
-        if l:
+        if detail:
             return out
         else:
             return [o['name'] for o in out]
@@ -422,7 +431,7 @@ class HDFileSystem(object):
             return f.read(size)
 
     def head(self, path, size=None):
-        """ Return last bytes of file """
+        """ Return first bytes of file """
         size = int(size) or 1024
         with self.open(path, 'r') as f:
             return f.read(size)
