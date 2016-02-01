@@ -272,9 +272,21 @@ class HDFileSystem(object):
         return out
 
     def glob(self, path):
+        """ Get list of paths mathing globstring (i.e., with "*"s).
+
+        If passed a directory, gets all contained files; if passed path
+        to a file, without any "*", returns one-element list containing that
+        filename.
+        """
         path = ensure_string(path)
-        if "*" not in path:
-            path = path + "*"
+        try:
+            f = self.info(path)
+            if f['kind'] == 'directory' and "*" not in path:
+                path = path + "*"
+            else:
+                return [f['name']]
+        except IOError:
+            pass
         if '/' in path[:path.index('*')]:
             ind = path[:path.index('*')].rindex('/')
             root = path[:ind+1]
@@ -464,8 +476,6 @@ class HDFile(object):
         self._fs = fs._handle
         self.buffer = b''
         self._handle = None
-        self.encoding = 'ascii'
-        m = [mode]
         self.mode = mode
         self.block_size = block_size
         self._set_handle()
@@ -509,18 +519,28 @@ class HDFile(object):
         return b''.join(buffers)
 
     def readline(self, chunksize=2**16, lineterminator='\n'):
-        """ Read a buffered line, text mode. """
-        lineterminator = ensure_string(lineterminator)
+        """ Return a line using buffered reading. 
+
+        Reads and caches chunksize bytes of data, and caches lines
+        locally. Subsequent readline calls deplete those lines until
+        empty, when a new chunk will be read. A read and readline are
+        not therefore generally pointing to the same location in the file;
+        `seek()` and `tell()` will give the true location in the file,
+        which will be one chunk in even after calling `readline` once.
+
+        Line iteration uses this method internally.
+        """
+        lineterminator = ensure_byte(lineterminator)
         lines = getattr(self, 'lines', [])
         if len(lines) < 1:
             buff = self.read(chunksize)
             if len(buff) == 0:   #EOF
-                remains = self.buffer.decode(self.encoding)
+                remains = self.buffer
                 if remains:
                     self.buffer = b''
                     return remains
                 raise EOFError
-            buff = (self.buffer + buff).decode(self.encoding)
+            buff = (self.buffer + buff)
             self.lines = buff.split(lineterminator)
         return self.lines.pop(0)
 
@@ -532,6 +552,7 @@ class HDFile(object):
                 raise StopIteration
 
     def __iter__(self):
+        """ Enables `for line in file:` usage """
         return self._genline()
 
     def readlines(self):
@@ -544,6 +565,7 @@ class HDFile(object):
         return out
 
     def seek(self, loc):
+        """ Set file read position."""
         info = self.info()
         loc = min(loc, info['size'])
         out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(loc))

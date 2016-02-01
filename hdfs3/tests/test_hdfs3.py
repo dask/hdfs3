@@ -149,15 +149,16 @@ def test_errors(hdfs):
 def test_glob(hdfs):
     hdfs.mkdir('/tmp/test/c/')
     hdfs.mkdir('/tmp/test/c/d/')
-    filenames = [b'a1', b'a2', b'a3', b'b1', b'c/x1', b'c/x2', b'c/d/x3']
+    filenames = [b'a', b'a1', b'a2', b'a3', b'b1', b'c/x1', b'c/x2', b'c/d/x3']
     filenames = [b'/tmp/test/' + s for s in filenames]
     for fn in filenames:
         hdfs.touch(fn)
 
     assert set(hdfs.glob('/tmp/test/a*')) == set([b'/tmp/test/' + a
-                                              for a in [b'a1', b'a2', b'a3']])
+               for a in [b'a', b'a1', b'a2', b'a3']])
     assert len(hdfs.glob('/tmp/test/c/')) == 4
     assert set(hdfs.glob('/tmp/test/')).issuperset(filenames)
+    assert set(hdfs.glob('/tmp/test/a')) == {b'/tmp/test/a'}
 
 
 def test_info(hdfs):
@@ -326,9 +327,9 @@ def test_readline(hdfs, lineterminator):
         f.write(lineterminator.join([b'123', b'456', b'789']))
 
     with hdfs.open(a) as f:
-        assert f.readline(lineterminator=lineterminator) == '123'
-        assert f.readline(lineterminator=lineterminator) == '456'
-        assert f.readline(lineterminator=lineterminator) == '789'
+        assert f.readline(lineterminator=lineterminator) == b'123'
+        assert f.readline(lineterminator=lineterminator) == b'456'
+        assert f.readline(lineterminator=lineterminator) == b'789'
         with pytest.raises(EOFError):
             f.readline()
 
