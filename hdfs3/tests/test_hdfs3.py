@@ -326,9 +326,9 @@ def test_readline(hdfs, lineterminator):
         f.write(lineterminator.join([b'123', b'456', b'789']))
 
     with hdfs.open(a) as f:
-        assert f.readline(lineterminator=lineterminator) == '123'
-        assert f.readline(lineterminator=lineterminator) == '456'
-        assert f.readline(lineterminator=lineterminator) == '789'
+        assert f.readline(lineterminator=lineterminator) == b'123'
+        assert f.readline(lineterminator=lineterminator) == b'456'
+        assert f.readline(lineterminator=lineterminator) == b'789'
         with pytest.raises(EOFError):
             f.readline()
 

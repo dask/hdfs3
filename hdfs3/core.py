@@ -507,14 +507,14 @@ class HDFile(object):
         return b''.join(buffers)
 
     def readline(self, chunksize=2**16, lineterminator='\n'):
-        """ Read a buffered line, text mode. 
+        """ Return a line using buffered reading. 
 
         Reads and caches chunksize bytes of data, and caches lines
         locally. Subsequent readline calls deplete those lines until
         empty, when a new chunk will be read. Mixing readline with
         read is not recommended.
         """
-        lineterminator = ensure_string(lineterminator)
+        lineterminator = ensure_byte(lineterminator)
         lines = getattr(self, 'lines', [])
         if len(lines) < 1:
             buff = self.read(chunksize)
