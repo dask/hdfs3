@@ -9,6 +9,7 @@ import os
 import re
 import subprocess
 import sys
+import re
 import warnings
 from .lib import _lib
 
@@ -271,39 +272,59 @@ class HDFileSystem(object):
         _lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
         return out
 
+    def walk(self, path):
+        """ Get all file entries below given path """
+        return self.du(path, False, True).keys()
+
     def glob(self, path):
-        """ Get list of paths mathing globstring (i.e., with "*"s).
+        """ Get list of paths mathing glob-like pattern (i.e., with "*"s).
 
         If passed a directory, gets all contained files; if passed path
         to a file, without any "*", returns one-element list containing that
         filename.
         """
-        path = ensure_string(path)
+        path = ensure_byte(path)
         try:
             f = self.info(path)
-            if f['kind'] == 'directory' and "*" not in path:
-                path = path + "*"
+            if f['kind'] == 'directory' and b"*" not in path:
+                path = path + b"*"
             else:
                 return [f['name']]
         except IOError:
             pass
-        if '/' in path[:path.index('*')]:
-            ind = path[:path.index('*')].rindex('/')
+        if b'/' in path[:path.index(b'*')]:
+            ind = path[:path.index(b'*')].rindex(b'/')
             root = path[:ind+1]
         else:
-            root = '/'
-        allfiles = self.du(root, False, True).keys()
-        out = [f for f in allfiles if fnmatch.fnmatch(ensure_string(f), path)]
+            root = b'/'
+        allfiles = self.walk(root)
+        pattern = re.compile(b"^" + path.replace(b'//', b'/').rstrip(
+                             b'/').replace(b'*', b'[^/]*').replace(b'?', b'.') + b"$")
+        out = [f for f in allfiles if re.match(pattern, 
+               f.replace(b'//', b'/').rstrip(b'/'))]
         return out
 
-    def ls(self, path):
+    def ls(self, path, detail=True):
+        """ List files at path
+
+        Parameters
+        ----------
+        path : string/bytes
+            location at which to list files
+        detail : bool (=True)
+            if True, each list item is a dict of file properties;
+            otherwise, returns list of filenames
+        """
         if not self.exists(path):
             raise FileNotFoundError(path)
         num = ctypes.c_int(0)
         fi = _lib.hdfsListDirectory(self._handle, ensure_byte(path), ctypes.byref(num))
         out = [info_to_dict(fi[i]) for i in range(num.value)]
         _lib.hdfsFreeFileInfo(fi, num.value)
-        return out
+        if detail:
+            return out
+        else:
+            return [o['name'] for o in out]
 
     def __repr__(self):
         state = ['Disconnected', 'Connected'][self._handle is not None]
@@ -413,7 +434,7 @@ class HDFileSystem(object):
             return f.read(size)
 
     def head(self, path, size=1024):
-        """ Return last bytes of file """
+        """ Return first bytes of file """
         with self.open(path, 'r') as f:
             return f.read(size)
 
