@@ -9,6 +9,7 @@ import os
 import re
 import subprocess
 import sys
+import re
 import warnings
 from .lib import _lib
 
@@ -297,7 +298,10 @@ class HDFileSystem(object):
         else:
             root = '/'
         allfiles = self.walk(root)
-        out = [f for f in allfiles if fnmatch.fnmatch(ensure_string(f), path)]
+        pattern = re.compile("^" + path.replace('//', '/').rstrip(
+                             '/').replace('*', '[^/]*').replace('?', '.') + "$")
+        out = [f for f in allfiles if re.match(pattern, ensure_string(
+               f.replace('//', '/').rstrip('/')))]
         return out
 
     def ls(self, path, detail=True):
@@ -307,9 +311,9 @@ class HDFileSystem(object):
         ----------
         path : string/bytes
             location at which to list files
-        detatil : bool (=True)
+        detail : bool (=True)
             if True, each list item is a dict of file properties;
-        otherwise, returns list of filenames
+            otherwise, returns list of filenames
         """
         if not self.exists(path):
             raise FileNotFoundError(path)
