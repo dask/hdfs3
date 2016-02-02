@@ -403,9 +403,8 @@ class HDFileSystem(object):
                         break
                     f.write(out)
 
-    def tail(self, path, size=None):
+    def tail(self, path, size=1024):
         """ Return last bytes of file """
-        size = int(size) or 1024
         length = self.du(path)[ensure_trailing_slash(path)]
         if size > length:
             return self.cat(path)
@@ -413,9 +412,8 @@ class HDFileSystem(object):
             f.seek(length - size)
             return f.read(size)
 
-    def head(self, path, size=None):
+    def head(self, path, size=1024):
         """ Return last bytes of file """
-        size = int(size) or 1024
         with self.open(path, 'r') as f:
             return f.read(size)
 
