@@ -161,8 +161,8 @@ def test_glob_walk(hdfs):
     assert len(hdfs.walk('/tmp/test/c/')) == 4
     assert len(hdfs.glob('/tmp/test/c/*')) == 3
     assert len(hdfs.walk('/tmp/test')) == len(filenames) + 2
-    assert set(hdfs.glob('/tmp/test/*')) == set([f for f in filenames if '/c/'
-                        not in f] + ['/tmp/test/c'])
+    assert set(hdfs.glob('/tmp/test/*')) == set([f for f in filenames if b'/c/'
+                        not in f] + [b'/tmp/test/c'])
     assert set(hdfs.glob('/tmp/test/*')).issubset(set(hdfs.walk('/tmp/test/')))
     assert set(hdfs.glob('/tmp/test/a')) == {b'/tmp/test/a'}
 

@@ -283,25 +283,25 @@ class HDFileSystem(object):
         to a file, without any "*", returns one-element list containing that
         filename.
         """
-        path = ensure_string(path)
+        path = ensure_byte(path)
         try:
             f = self.info(path)
-            if f['kind'] == 'directory' and "*" not in path:
-                path = path + "*"
+            if f['kind'] == 'directory' and b"*" not in path:
+                path = path + b"*"
             else:
                 return [f['name']]
         except IOError:
             pass
-        if '/' in path[:path.index('*')]:
-            ind = path[:path.index('*')].rindex('/')
+        if b'/' in path[:path.index(b'*')]:
+            ind = path[:path.index(b'*')].rindex(b'/')
             root = path[:ind+1]
         else:
-            root = '/'
+            root = b'/'
         allfiles = self.walk(root)
-        pattern = re.compile("^" + path.replace('//', '/').rstrip(
-                             '/').replace('*', '[^/]*').replace('?', '.') + "$")
-        out = [f for f in allfiles if re.match(pattern, ensure_string(
-               f.replace('//', '/').rstrip('/')))]
+        pattern = re.compile(b"^" + path.replace(b'//', b'/').rstrip(
+                             b'/').replace(b'*', b'[^/]*').replace(b'?', b'.') + b"$")
+        out = [f for f in allfiles if re.match(pattern, 
+               f.replace(b'//', b'/').rstrip(b'/'))]
         return out
 
     def ls(self, path, detail=True):
