@@ -60,6 +60,7 @@ Related Work
    quickstart
    hdfs
    api
+   limitations
 
 .. _`Hadoop File System`: https://en.wikipedia.org/wiki/Apache_Hadoop
 .. _libhdfs3: http://pivotalrd.github.io/libhdfs3/
