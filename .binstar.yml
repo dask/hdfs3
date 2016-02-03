@@ -1,0 +1,24 @@
+package: hdfs3
+user: hdfs3
+
+platform:
+  - linux-64
+
+engine:
+  - python=2.7
+  - python=3.5
+
+install:
+  - conda config --add channels blaze
+
+before_script:
+  - conda info
+  - python -V
+
+script:
+  - conda build conda-recipes/hdfs3
+
+build_targets: conda
+
+iotimeout: 600
+
