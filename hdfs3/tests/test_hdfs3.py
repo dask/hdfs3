@@ -98,6 +98,8 @@ def test_seek(hdfs):
             f.seek(1000)
         with pytest.raises(ValueError):
             f.seek(-1)
+        with pytest.raises(ValueError):
+            f.seek(-5, 2)
         f.seek(0)
         assert f.read(1) == b'1'
         f.seek(0)
