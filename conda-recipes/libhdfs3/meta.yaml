@@ -11,6 +11,7 @@ requirements:
         - libgsasl
         - libntlm
         - boost
+        - cmake
     run:
         - libprotobuf
         - libgsasl
