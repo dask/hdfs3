@@ -567,7 +567,7 @@ class HDFile(object):
     def seek(self, offset, from_what=0):
         """ Set file read position. Read mode only.
 
-        Attempt to move before position 0 will raise an exception. Note that,
+        Attempt to move out of file bounds raises an exception. Note that,
         by the convention in python file seek, offset should be <=0 if
         from_what is 2.
 
