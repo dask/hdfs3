@@ -126,6 +126,21 @@ def test_write_blocksize(hdfs):
         hdfs.open(a, 'r', block_size=123)
 
 
+def test_replication(hdfs):
+    path = '/tmp/test/afile'
+    hdfs.open(path, 'w', repl=0).close()
+    assert hdfs.info(path)['replication'] > 0
+    hdfs.open(path, 'w', repl=1).close()
+    assert hdfs.info(path)['replication'] == 1
+    hdfs.open(path, 'w', repl=2).close()
+    assert hdfs.info(path)['replication'] == 2
+    hdfs.set_replication(path, 3)
+    assert hdfs.info(path)['replication'] == 3
+    with pytest.raises(ValueError):
+        hdfs.set_replication(path, -1)
+    with pytest.raises(IOError):
+        hdfs.open(path, 'w', repl=-1).close()
+
 def test_errors(hdfs):
     with pytest.raises((IOError, OSError)):
         hdfs.open('/tmp/test/shfoshf', 'r')

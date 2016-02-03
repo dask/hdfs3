@@ -319,6 +319,8 @@ class HDFileSystem(object):
             raise IOError('Create directory failed')
 
     def set_replication(self, path, replication):
+        if replication < 0:
+            raise ValueError('Replication must be positive, or 0 for system default')
         out = _lib.hdfsSetReplication(self._handle, ensure_byte(path),
                                      ctypes.c_int16(int(replication)))
         if out != 0:
