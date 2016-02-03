@@ -564,13 +564,38 @@ class HDFile(object):
             raise IOError('Tell Failed on file %s' % self.path)
         return out
 
-    def seek(self, loc):
-        """ Set file read position."""
+    def seek(self, offset, from_what=0):
+        """ Set file read position. Read mode only.
+
+        Attempt to move before position 0 will raise an exception. Note that,
+        by the convention in python file seek, offset should be <=0 if
+        from_what is 2.
+
+        Parameters
+        ----------
+        loc : int
+            byte location in the file.
+        offset : int 0, 1, 2
+            if 0 (befault), relative to file start; if 1, relative to current
+            location; if 2, relative to file end.
+
+        Returns
+        -------
+        new position
+        """
+        if from_what not in {0, 1, 2}:
+            raise ValueError('seek mode must be 0, 1 or 2')
         info = self.info()
-        loc = min(loc, info['size'])
-        out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(loc))
+        if from_what == 1:
+            offset = offset + self.tell()
+        elif from_what == 2:
+            offset = info['size'] + offset
+        if offset < 0 or offset > info['size']:
+            raise ValueError('Attempt to seek outside file')
+        out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(offset))
         if out == -1:
             raise IOError('Seek Failed on file %s' % self.path)
+        return self.tell()
 
     def info(self):
         """ Filesystem metadata about this file """

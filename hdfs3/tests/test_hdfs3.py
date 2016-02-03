@@ -94,10 +94,21 @@ def test_seek(hdfs):
         f.write(b'123')
 
     with hdfs.open(a) as f:
-        f.seek(1000)
-        assert not f.read(1)
+        with pytest.raises(ValueError):
+            f.seek(1000)
+        with pytest.raises(ValueError):
+            f.seek(-1)
         f.seek(0)
         assert f.read(1) == b'1'
+        f.seek(0)
+        assert f.read(1) == b'1'
+        f.seek(3)
+        assert f.read(1) == b''
+        f.seek(-1, 2)
+        assert f.read(1) == b'3'
+        f.seek(-1, 1)
+        f.seek(-1, 1)
+        assert f.read(1) == b'2'
 
 
 def test_libload():
