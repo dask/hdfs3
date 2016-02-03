@@ -573,9 +573,9 @@ class HDFile(object):
 
         Parameters
         ----------
-        loc : int
+        offset : int
             byte location in the file.
-        offset : int 0, 1, 2
+        from_what : int 0, 1, 2
             if 0 (befault), relative to file start; if 1, relative to current
             location; if 2, relative to file end.
 
