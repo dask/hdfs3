@@ -10,10 +10,12 @@ requirements:
         - libprotobuf
         - libgsasl
         - libntlm
+        - boost
     run:
         - libprotobuf
         - libgsasl
         - libntlm
+        - boost
 
 about:
   home: https://github.com/PivotalRD/libhdfs3
