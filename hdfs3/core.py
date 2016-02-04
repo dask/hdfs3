@@ -39,6 +39,7 @@ def hdfs_conf():
 
 
 def conf_to_dict(fname):
+    """ Read a hdfs-site.xml style conf file, produces dictionary """
     name_match = re.compile("<name>(.*?)</name>")
     val_match = re.compile("<value>(.*?)</value>")
     conf = {}
@@ -209,7 +210,7 @@ class HDFileSystem(object):
         mode: string
             One of 'r', 'w', or 'a'
         repl: int
-            Replication factor; if zero, use system default
+            Replication factor; if zero, use system default (only on write)
         block_size: int
             Size of data-node blocks if writing
         """
@@ -221,6 +222,17 @@ class HDFileSystem(object):
                 block_size=block_size)
 
     def du(self, path, total=False, deep=False):
+        """Returns file sizes on a path.
+
+        Parameters
+        ----------
+        path : string
+            where to look
+        total : bool (False)
+            to add up the sizes to a grand total
+        deep : bool (False)
+            whether to recurse into subdirectories
+        """
         if isinstance(total, str):
             total = total=='True'
         if isinstance(deep, str):
@@ -237,6 +249,7 @@ class HDFileSystem(object):
         return {p['name']: p['size'] for p in fi}
 
     def df(self):
+        """ Used/free disc space on the HDFS system """
         cap = _lib.hdfsGetCapacity(self._handle)
         used = _lib.hdfsGetUsed(self._handle)
         return {'capacity': cap, 'used': used, 'percent-free': 100*(cap-used)/cap}
@@ -262,7 +275,7 @@ class HDFileSystem(object):
         return locs
 
     def info(self, path):
-        """ File information """
+        """ File information (as a dict) """
         if not self.exists(path):
             raise FileNotFoundError(path)
         fi = _lib.hdfsGetPathInfo(self._handle, ensure_byte(path)).contents
@@ -279,7 +292,7 @@ class HDFileSystem(object):
 
         If passed a directory, gets all contained files; if passed path
         to a file, without any "*", returns one-element list containing that
-        filename.
+        filename. Does not support python3.5's "**" notation.
         """
         path = ensure_byte(path)
         try:
@@ -333,11 +346,19 @@ class HDFileSystem(object):
             self.disconnect()
 
     def mkdir(self, path):
+        """ Make directory at path """
         out = _lib.hdfsCreateDirectory(self._handle, ensure_byte(path))
         if out != 0:
             raise IOError('Create directory failed')
 
     def set_replication(self, path, replication):
+        """ Instruct HDFS to set the replication for the given file.
+
+        If successful, the head-node's table is updated immediately, but
+        actual copying will be queued for later. It is acceptable to set
+        a replication that cannot be supported (e.g., higher than the
+        number of data-nodes).
+        """
         if replication < 0:
             raise ValueError('Replication must be positive, or 0 for system default')
         out = _lib.hdfsSetReplication(self._handle, ensure_byte(path),
@@ -346,6 +367,7 @@ class HDFileSystem(object):
             raise IOError('Set replication failed')
 
     def mv(self, path1, path2):
+        """ Move file at path1 to path2 """
         if not self.exists(path1):
             raise FileNotFoundError(path1)
         out = _lib.hdfsRename(self._handle, ensure_byte(path1), ensure_byte(path2))
@@ -360,6 +382,7 @@ class HDFileSystem(object):
             raise IOError('Remove failed on %s' % path)
 
     def exists(self, path):
+        """ Is there an entry at path? """
         out = _lib.hdfsExists(self._handle, ensure_byte(path) )
         return out == 0
 
@@ -488,10 +511,12 @@ class HDFileSystem(object):
 
 
 def struct_to_dict(s):
+    """ Return dictionary vies of a simple ctypes record-like structure """
     return dict((name, getattr(s, name)) for (name, p) in s._fields_)
 
 
 def info_to_dict(s):
+    """ Process data returned by hdfsInfo """
     d = struct_to_dict(s)
     d['kind'] = {68: 'directory', 70: 'file'}[d['kind']]
     return d
@@ -590,9 +615,11 @@ class HDFile(object):
         return self._genline()
 
     def readlines(self):
+        """ Return all lines in a file as a list """
         return list(self)
 
     def tell(self):
+        """ Get current byte location in a file """
         out = _lib.hdfsTell(self._fs, self._handle)
         if out == -1:
             raise IOError('Tell Failed on file %s' % self.path)
@@ -636,6 +663,7 @@ class HDFile(object):
         return self.fs.info(self.path)
 
     def write(self, data):
+        """Write bytes to open file (which must be in w or a mode)"""
         data = ensure_byte(data)
         if not _lib.hdfsFileIsOpenForWrite(self._handle):
             raise IOError('File not write mode')
@@ -643,9 +671,11 @@ class HDFile(object):
             raise IOError('Write failed on file %s' % self.path)
 
     def flush(self):
+        """Send buffer to the data-node; actual write to disc may happen later"""
         _lib.hdfsFlush(self._fs, self._handle)
 
     def close(self):
+        """Flush and close file, ensuring the data is readable"""
         self.flush()
         _lib.hdfsCloseFile(self._fs, self._handle)
         self._handle = None  # _libhdfs releases memory
