@@ -201,7 +201,7 @@ class HDFileSystem(object):
             _lib.hdfsDisconnect(self._handle)
         self._handle = None
 
-    def open(self, path, mode='r', repl=1, buff=0, block_size=0):
+    def open(self, path, mode='r', repl=0, buff=0, block_size=0):
         """ Open a file for reading or writing
 
         Parameters
@@ -211,7 +211,7 @@ class HDFileSystem(object):
         mode: string
             One of 'r', 'w', or 'a'
         repl: int
-            Replication factor
+            Replication factor; if zero, use system default
         block_size: int
             Size of data-node blocks if writing
         """
@@ -241,7 +241,7 @@ class HDFileSystem(object):
     def df(self):
         cap = _lib.hdfsGetCapacity(self._handle)
         used = _lib.hdfsGetUsed(self._handle)
-        return {'capacity': cap, 'used': used, 'free': 100*(cap-used)/cap}
+        return {'capacity': cap, 'used': used, 'percent-free': 100*(cap-used)/cap}
 
     def get_block_locations(self, path, start=0, length=0):
         """ Fetch physical locations of blocks """
@@ -336,12 +336,16 @@ class HDFileSystem(object):
 
     def mkdir(self, path):
         out = _lib.hdfsCreateDirectory(self._handle, ensure_byte(path))
-        return out == 0
+        if out != 0:
+            raise IOError('Create directory failed')
 
-    def set_replication(self, path, repl):
+    def set_replication(self, path, replication):
+        if replication < 0:
+            raise ValueError('Replication must be positive, or 0 for system default')
         out = _lib.hdfsSetReplication(self._handle, ensure_byte(path),
-                                     ctypes.c_int16(int(repl)))
-        return out == 0
+                                     ctypes.c_int16(int(replication)))
+        if out != 0:
+            raise IOError('Set replication failed')
 
     def mv(self, path1, path2):
         if not self.exists(path1):
@@ -354,7 +358,8 @@ class HDFileSystem(object):
         if not self.exists(path):
             raise FileNotFoundError(path)
         out = _lib.hdfsDelete(self._handle, ensure_byte(path), bool(recursive))
-        return out == 0
+        if out != 0:
+            raise IOError('Remove failed')
 
     def exists(self, path):
         out = _lib.hdfsExists(self._handle, ensure_byte(path) )
@@ -371,7 +376,8 @@ class HDFileSystem(object):
         if not self.exists(path):
             raise FileNotFoundError(path)
         out = _lib.hdfsChmod(self._handle, ensure_byte(path), ctypes.c_short(int(mode)))
-        return out == 0
+        if out != 0:
+            raise IOError("chmod failed")
 
     def chown(self, path, owner, group):
         "Change owner/group"
@@ -379,13 +385,13 @@ class HDFileSystem(object):
             raise FileNotFoundError(path)
         out = _lib.hdfsChown(self._handle, ensure_byte(path), ensure_byte(owner),
                             ensure_byte(group))
-        return out == 0
+        if out != 0:
+            raise IOError("chown failed")
 
     def cat(self, path):
         """ Return contents of file """
         if not self.exists(path):
             raise FileNotFoundError(path)
-        buffers = []
         with self.open(path, 'r') as f:
             result = f.read()
         return result
@@ -492,7 +498,7 @@ mode_numbers = {'w': 1, 'r': 0, 'a': 1025}
 
 class HDFile(object):
     """ File on HDFS """
-    def __init__(self, fs, path, mode, repl=1, buff=0, block_size=0):
+    def __init__(self, fs, path, mode, repl=0, buff=0, block_size=0):
         """ Called by open on a HDFileSystem """
         self.fs = fs
         self.path = path
