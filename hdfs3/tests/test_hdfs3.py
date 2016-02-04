@@ -113,6 +113,8 @@ def test_seek(hdfs):
         f.seek(-1, 1)
         f.seek(-1, 1)
         assert f.read(1) == b'2'
+        for i in range(4):
+            assert f.seek(i) == i
 
 
 def test_libload():
