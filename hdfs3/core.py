@@ -64,7 +64,9 @@ def conf_to_dict(fname):
             conf[key] = val
     return conf
 
+
 conf = hdfs_conf()
+
 
 def ensure_byte(s):
     """ Give strings that ctypes is guaranteed to handle """
@@ -311,7 +313,7 @@ class HDFileSystem(object):
         allfiles = self.walk(root)
         pattern = re.compile(b"^" + path.replace(b'//', b'/').rstrip(
                              b'/').replace(b'*', b'[^/]*').replace(b'?', b'.') + b"$")
-        out = [f for f in allfiles if re.match(pattern, 
+        out = [f for f in allfiles if re.match(pattern,
                f.replace(b'//', b'/').rstrip(b'/'))]
         return out
 
@@ -394,7 +396,7 @@ class HDFileSystem(object):
             raise IOError('truncate failed on %s' % path)
 
     def chmod(self, path, mode):
-        "Mode in numerical format (give as octal, if convenient)"
+        """ Mode in numerical format (give as octal, if convenient) """
         if not self.exists(path):
             raise FileNotFoundError(path)
         out = _lib.hdfsChmod(self._handle, ensure_byte(path), ctypes.c_short(int(mode)))
@@ -402,7 +404,7 @@ class HDFileSystem(object):
             raise IOError("chmod failed on %s" % path)
 
     def chown(self, path, owner, group):
-        "Change owner/group"
+        """ Change owner/group """
         if not self.exists(path):
             raise FileNotFoundError(path)
         out = _lib.hdfsChown(self._handle, ensure_byte(path), ensure_byte(owner),
@@ -578,7 +580,7 @@ class HDFile(object):
         return b''.join(buffers)
 
     def readline(self, chunksize=2**16, lineterminator='\n'):
-        """ Return a line using buffered reading. 
+        """ Return a line using buffered reading.
 
         Reads and caches chunksize bytes of data, and caches lines
         locally. Subsequent readline calls deplete those lines until
@@ -663,7 +665,7 @@ class HDFile(object):
         return self.fs.info(self.path)
 
     def write(self, data):
-        """Write bytes to open file (which must be in w or a mode)"""
+        """ Write bytes to open file (which must be in w or a mode) """
         data = ensure_byte(data)
         if not _lib.hdfsFileIsOpenForWrite(self._handle):
             raise IOError('File not write mode')
@@ -671,11 +673,11 @@ class HDFile(object):
             raise IOError('Write failed on file %s' % self.path)
 
     def flush(self):
-        """Send buffer to the data-node; actual write to disc may happen later"""
+        """ Send buffer to the data-node; actual write to disc may happen later """
         _lib.hdfsFlush(self._fs, self._handle)
 
     def close(self):
-        """Flush and close file, ensuring the data is readable"""
+        """ Flush and close file, ensuring the data is readable """
         self.flush()
         _lib.hdfsCloseFile(self._fs, self._handle)
         self._handle = None  # _libhdfs releases memory
