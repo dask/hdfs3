@@ -3,10 +3,8 @@
 from __future__ import absolute_import
 
 import ctypes
-import fnmatch
 import logging
 import os
-import re
 import subprocess
 import sys
 import re
@@ -359,7 +357,7 @@ class HDFileSystem(object):
             raise FileNotFoundError(path)
         out = _lib.hdfsDelete(self._handle, ensure_byte(path), bool(recursive))
         if out != 0:
-            raise IOError('Remove failed')
+            raise IOError('Remove failed on %s' % path)
 
     def exists(self, path):
         out = _lib.hdfsExists(self._handle, ensure_byte(path) )
@@ -369,7 +367,8 @@ class HDFileSystem(object):
         # Does not appear to ever succeed
         out = _lib.hdfsTruncate(self._handle, ensure_byte(path),
                                ctypes.c_int64(int(pos)), 0)
-        return out == 0
+        if out != 0:
+            raise IOError('truncate failed on %s' % path)
 
     def chmod(self, path, mode):
         "Mode in numerical format (give as octal, if convenient)"
@@ -377,7 +376,7 @@ class HDFileSystem(object):
             raise FileNotFoundError(path)
         out = _lib.hdfsChmod(self._handle, ensure_byte(path), ctypes.c_short(int(mode)))
         if out != 0:
-            raise IOError("chmod failed")
+            raise IOError("chmod failed on %s" % path)
 
     def chown(self, path, owner, group):
         "Change owner/group"
@@ -386,7 +385,7 @@ class HDFileSystem(object):
         out = _lib.hdfsChown(self._handle, ensure_byte(path), ensure_byte(owner),
                             ensure_byte(group))
         if out != 0:
-            raise IOError("chown failed")
+            raise IOError("chown failed on %s" % path)
 
     def cat(self, path):
         """ Return contents of file """
@@ -421,7 +420,6 @@ class HDFileSystem(object):
 
     def put(self, filename, path, chunk=2**16):
         """ Copy local file to path in HDFS """
-        #TODO: _lib.hdfsCopy() may do this more efficiently
         with self.open(path, 'w') as f:
             with open(filename, 'rb') as f2:
                 while True:
@@ -457,6 +455,8 @@ class HDFileSystem(object):
         + length``.  If ``offset`` is zero then we start at zero.  The
         bytestring returned will not include the surrounding delimiter strings.
 
+        If offset+length is beyond the eof, reads to eof.
+
         Parameters
         ----------
         fn: string
@@ -480,6 +480,9 @@ class HDFileSystem(object):
         hdfs3.utils.read_block
         """
         with self.open(fn, 'r') as f:
+            size = f.info()['size']
+            if offset + length > size:
+                length = size - offset
             bytes = read_block(f, offset, length, delimiter)
         return bytes
 

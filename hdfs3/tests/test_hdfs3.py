@@ -175,6 +175,14 @@ def test_errors(hdfs):
     with pytest.raises((IOError, OSError)):
         hdfs.open('/x', 'r')
 
+    with pytest.raises(IOError):
+        hdfs.chown('/unknown', 'someone', 'group')
+
+    with pytest.raises(IOError):
+        hdfs.chmod('/unknonwn', 0)
+
+    with pytest.raises(IOError):
+        hdfs.rm('/unknown')
 
 def test_glob_walk(hdfs):
     hdfs.mkdir('/tmp/test/c/')
