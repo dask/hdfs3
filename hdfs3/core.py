@@ -3,12 +3,11 @@
 from __future__ import absolute_import
 
 import ctypes
-import fnmatch
 import logging
 import os
-import re
 import subprocess
 import sys
+import re
 import warnings
 from .lib import _lib
 
@@ -40,6 +39,7 @@ def hdfs_conf():
 
 
 def conf_to_dict(fname):
+    """ Read a hdfs-site.xml style conf file, produces dictionary """
     name_match = re.compile("<name>(.*?)</name>")
     val_match = re.compile("<value>(.*?)</value>")
     conf = {}
@@ -200,7 +200,7 @@ class HDFileSystem(object):
             _lib.hdfsDisconnect(self._handle)
         self._handle = None
 
-    def open(self, path, mode='r', repl=1, buff=0, block_size=0):
+    def open(self, path, mode='r', repl=0, buff=0, block_size=0):
         """ Open a file for reading or writing
 
         Parameters
@@ -210,7 +210,7 @@ class HDFileSystem(object):
         mode: string
             One of 'r', 'w', or 'a'
         repl: int
-            Replication factor
+            Replication factor; if zero, use system default (only on write)
         block_size: int
             Size of data-node blocks if writing
         """
@@ -222,6 +222,17 @@ class HDFileSystem(object):
                 block_size=block_size)
 
     def du(self, path, total=False, deep=False):
+        """Returns file sizes on a path.
+
+        Parameters
+        ----------
+        path : string
+            where to look
+        total : bool (False)
+            to add up the sizes to a grand total
+        deep : bool (False)
+            whether to recurse into subdirectories
+        """
         if isinstance(total, str):
             total = total=='True'
         if isinstance(deep, str):
@@ -238,9 +249,10 @@ class HDFileSystem(object):
         return {p['name']: p['size'] for p in fi}
 
     def df(self):
+        """ Used/free disc space on the HDFS system """
         cap = _lib.hdfsGetCapacity(self._handle)
         used = _lib.hdfsGetUsed(self._handle)
-        return {'capacity': cap, 'used': used, 'free': 100*(cap-used)/cap}
+        return {'capacity': cap, 'used': used, 'percent-free': 100*(cap-used)/cap}
 
     def get_block_locations(self, path, start=0, length=0):
         """ Fetch physical locations of blocks """
@@ -263,7 +275,7 @@ class HDFileSystem(object):
         return locs
 
     def info(self, path):
-        """ File information """
+        """ File information (as a dict) """
         if not self.exists(path):
             raise FileNotFoundError(path)
         fi = _lib.hdfsGetPathInfo(self._handle, ensure_byte(path)).contents
@@ -271,39 +283,59 @@ class HDFileSystem(object):
         _lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
         return out
 
+    def walk(self, path):
+        """ Get all file entries below given path """
+        return self.du(path, False, True).keys()
+
     def glob(self, path):
-        """ Get list of paths mathing globstring (i.e., with "*"s).
+        """ Get list of paths mathing glob-like pattern (i.e., with "*"s).
 
         If passed a directory, gets all contained files; if passed path
         to a file, without any "*", returns one-element list containing that
-        filename.
+        filename. Does not support python3.5's "**" notation.
         """
-        path = ensure_string(path)
+        path = ensure_byte(path)
         try:
             f = self.info(path)
-            if f['kind'] == 'directory' and "*" not in path:
-                path = path + "*"
+            if f['kind'] == 'directory' and b"*" not in path:
+                path = path + b"*"
             else:
                 return [f['name']]
         except IOError:
             pass
-        if '/' in path[:path.index('*')]:
-            ind = path[:path.index('*')].rindex('/')
+        if b'/' in path[:path.index(b'*')]:
+            ind = path[:path.index(b'*')].rindex(b'/')
             root = path[:ind+1]
         else:
-            root = '/'
-        allfiles = self.du(root, False, True).keys()
-        out = [f for f in allfiles if fnmatch.fnmatch(ensure_string(f), path)]
+            root = b'/'
+        allfiles = self.walk(root)
+        pattern = re.compile(b"^" + path.replace(b'//', b'/').rstrip(
+                             b'/').replace(b'*', b'[^/]*').replace(b'?', b'.') + b"$")
+        out = [f for f in allfiles if re.match(pattern, 
+               f.replace(b'//', b'/').rstrip(b'/'))]
         return out
 
-    def ls(self, path):
+    def ls(self, path, detail=True):
+        """ List files at path
+
+        Parameters
+        ----------
+        path : string/bytes
+            location at which to list files
+        detail : bool (=True)
+            if True, each list item is a dict of file properties;
+            otherwise, returns list of filenames
+        """
         if not self.exists(path):
             raise FileNotFoundError(path)
         num = ctypes.c_int(0)
         fi = _lib.hdfsListDirectory(self._handle, ensure_byte(path), ctypes.byref(num))
         out = [info_to_dict(fi[i]) for i in range(num.value)]
         _lib.hdfsFreeFileInfo(fi, num.value)
-        return out
+        if detail:
+            return out
+        else:
+            return [o['name'] for o in out]
 
     def __repr__(self):
         state = ['Disconnected', 'Connected'][self._handle is not None]
@@ -314,15 +346,28 @@ class HDFileSystem(object):
             self.disconnect()
 
     def mkdir(self, path):
+        """ Make directory at path """
         out = _lib.hdfsCreateDirectory(self._handle, ensure_byte(path))
-        return out == 0
+        if out != 0:
+            raise IOError('Create directory failed')
 
-    def set_replication(self, path, repl):
+    def set_replication(self, path, replication):
+        """ Instruct HDFS to set the replication for the given file.
+
+        If successful, the head-node's table is updated immediately, but
+        actual copying will be queued for later. It is acceptable to set
+        a replication that cannot be supported (e.g., higher than the
+        number of data-nodes).
+        """
+        if replication < 0:
+            raise ValueError('Replication must be positive, or 0 for system default')
         out = _lib.hdfsSetReplication(self._handle, ensure_byte(path),
-                                     ctypes.c_int16(int(repl)))
-        return out == 0
+                                     ctypes.c_int16(int(replication)))
+        if out != 0:
+            raise IOError('Set replication failed')
 
     def mv(self, path1, path2):
+        """ Move file at path1 to path2 """
         if not self.exists(path1):
             raise FileNotFoundError(path1)
         out = _lib.hdfsRename(self._handle, ensure_byte(path1), ensure_byte(path2))
@@ -333,9 +378,11 @@ class HDFileSystem(object):
         if not self.exists(path):
             raise FileNotFoundError(path)
         out = _lib.hdfsDelete(self._handle, ensure_byte(path), bool(recursive))
-        return out == 0
+        if out != 0:
+            raise IOError('Remove failed on %s' % path)
 
     def exists(self, path):
+        """ Is there an entry at path? """
         out = _lib.hdfsExists(self._handle, ensure_byte(path) )
         return out == 0
 
@@ -343,14 +390,16 @@ class HDFileSystem(object):
         # Does not appear to ever succeed
         out = _lib.hdfsTruncate(self._handle, ensure_byte(path),
                                ctypes.c_int64(int(pos)), 0)
-        return out == 0
+        if out != 0:
+            raise IOError('truncate failed on %s' % path)
 
     def chmod(self, path, mode):
         "Mode in numerical format (give as octal, if convenient)"
         if not self.exists(path):
             raise FileNotFoundError(path)
         out = _lib.hdfsChmod(self._handle, ensure_byte(path), ctypes.c_short(int(mode)))
-        return out == 0
+        if out != 0:
+            raise IOError("chmod failed on %s" % path)
 
     def chown(self, path, owner, group):
         "Change owner/group"
@@ -358,13 +407,13 @@ class HDFileSystem(object):
             raise FileNotFoundError(path)
         out = _lib.hdfsChown(self._handle, ensure_byte(path), ensure_byte(owner),
                             ensure_byte(group))
-        return out == 0
+        if out != 0:
+            raise IOError("chown failed on %s" % path)
 
     def cat(self, path):
         """ Return contents of file """
         if not self.exists(path):
             raise FileNotFoundError(path)
-        buffers = []
         with self.open(path, 'r') as f:
             result = f.read()
         return result
@@ -394,7 +443,6 @@ class HDFileSystem(object):
 
     def put(self, filename, path, chunk=2**16):
         """ Copy local file to path in HDFS """
-        #TODO: _lib.hdfsCopy() may do this more efficiently
         with self.open(path, 'w') as f:
             with open(filename, 'rb') as f2:
                 while True:
@@ -403,14 +451,18 @@ class HDFileSystem(object):
                         break
                     f.write(out)
 
-    def tail(self, path, size=None):
+    def tail(self, path, size=1024):
         """ Return last bytes of file """
-        size = int(size) or 1024
         length = self.du(path)[ensure_trailing_slash(path)]
         if size > length:
             return self.cat(path)
         with self.open(path, 'r') as f:
             f.seek(length - size)
+            return f.read(size)
+
+    def head(self, path, size=1024):
+        """ Return first bytes of file """
+        with self.open(path, 'r') as f:
             return f.read(size)
 
     def touch(self, path):
@@ -425,6 +477,8 @@ class HDFileSystem(object):
         delimiter boundaries that follow the locations ``offset`` and ``offset
         + length``.  If ``offset`` is zero then we start at zero.  The
         bytestring returned will not include the surrounding delimiter strings.
+
+        If offset+length is beyond the eof, reads to eof.
 
         Parameters
         ----------
@@ -449,15 +503,20 @@ class HDFileSystem(object):
         hdfs3.utils.read_block
         """
         with self.open(fn, 'r') as f:
+            size = f.info()['size']
+            if offset + length > size:
+                length = size - offset
             bytes = read_block(f, offset, length, delimiter)
         return bytes
 
 
 def struct_to_dict(s):
+    """ Return dictionary vies of a simple ctypes record-like structure """
     return dict((name, getattr(s, name)) for (name, p) in s._fields_)
 
 
 def info_to_dict(s):
+    """ Process data returned by hdfsInfo """
     d = struct_to_dict(s)
     d['kind'] = {68: 'directory', 70: 'file'}[d['kind']]
     return d
@@ -467,7 +526,7 @@ mode_numbers = {'w': 1, 'r': 0, 'a': 1025}
 
 class HDFile(object):
     """ File on HDFS """
-    def __init__(self, fs, path, mode, repl=1, buff=0, block_size=0):
+    def __init__(self, fs, path, mode, repl=0, buff=0, block_size=0):
         """ Called by open on a HDFileSystem """
         self.fs = fs
         self.path = path
@@ -556,27 +615,55 @@ class HDFile(object):
         return self._genline()
 
     def readlines(self):
+        """ Return all lines in a file as a list """
         return list(self)
 
     def tell(self):
+        """ Get current byte location in a file """
         out = _lib.hdfsTell(self._fs, self._handle)
         if out == -1:
             raise IOError('Tell Failed on file %s' % self.path)
         return out
 
-    def seek(self, loc):
-        """ Set file read position."""
+    def seek(self, offset, from_what=0):
+        """ Set file read position. Read mode only.
+
+        Attempt to move out of file bounds raises an exception. Note that,
+        by the convention in python file seek, offset should be <=0 if
+        from_what is 2.
+
+        Parameters
+        ----------
+        offset : int
+            byte location in the file.
+        from_what : int 0, 1, 2
+            if 0 (befault), relative to file start; if 1, relative to current
+            location; if 2, relative to file end.
+
+        Returns
+        -------
+        new position
+        """
+        if from_what not in {0, 1, 2}:
+            raise ValueError('seek mode must be 0, 1 or 2')
         info = self.info()
-        loc = min(loc, info['size'])
-        out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(loc))
+        if from_what == 1:
+            offset = offset + self.tell()
+        elif from_what == 2:
+            offset = info['size'] + offset
+        if offset < 0 or offset > info['size']:
+            raise ValueError('Attempt to seek outside file')
+        out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(offset))
         if out == -1:
             raise IOError('Seek Failed on file %s' % self.path)
+        return self.tell()
 
     def info(self):
         """ Filesystem metadata about this file """
         return self.fs.info(self.path)
 
     def write(self, data):
+        """Write bytes to open file (which must be in w or a mode)"""
         data = ensure_byte(data)
         if not _lib.hdfsFileIsOpenForWrite(self._handle):
             raise IOError('File not write mode')
@@ -584,9 +671,11 @@ class HDFile(object):
             raise IOError('Write failed on file %s' % self.path)
 
     def flush(self):
+        """Send buffer to the data-node; actual write to disc may happen later"""
         _lib.hdfsFlush(self._fs, self._handle)
 
     def close(self):
+        """Flush and close file, ensuring the data is readable"""
         self.flush()
         _lib.hdfsCloseFile(self._fs, self._handle)
         self._handle = None  # _libhdfs releases memory

@@ -1,6 +1,5 @@
 recursive-include hdfs3 *.py
 
-include bin/cli
 include setup.py
 include README.rst
 include LICENSE
