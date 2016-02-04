@@ -52,6 +52,8 @@ def test_ls_touch(hdfs):
     hdfs.touch(b)
     L = hdfs.ls('/tmp/test')
     assert set(d['name'] for d in L) == set([a, b])
+    L = hdfs.ls('/tmp/test', False)
+    assert set(L) == set([a, b])
 
 
 def test_rm(hdfs):
@@ -159,7 +161,7 @@ def test_errors(hdfs):
         hdfs.open('/x', 'r')
 
 
-def test_glob(hdfs):
+def test_glob_walk(hdfs):
     hdfs.mkdir('/tmp/test/c/')
     hdfs.mkdir('/tmp/test/c/d/')
     filenames = [b'a', b'a1', b'a2', b'a3', b'b1', b'c/x1', b'c/x2', b'c/d/x3']
@@ -169,8 +171,12 @@ def test_glob(hdfs):
 
     assert set(hdfs.glob('/tmp/test/a*')) == set([b'/tmp/test/' + a
                for a in [b'a', b'a1', b'a2', b'a3']])
-    assert len(hdfs.glob('/tmp/test/c/')) == 4
-    assert set(hdfs.glob('/tmp/test/')).issuperset(filenames)
+    assert len(hdfs.walk('/tmp/test/c/')) == 4
+    assert len(hdfs.glob('/tmp/test/c/*')) == 3
+    assert len(hdfs.walk('/tmp/test')) == len(filenames) + 2
+    assert set(hdfs.glob('/tmp/test/*')) == set([f for f in filenames if b'/c/'
+                        not in f] + [b'/tmp/test/c'])
+    assert set(hdfs.glob('/tmp/test/*')).issubset(set(hdfs.walk('/tmp/test/')))
     assert set(hdfs.glob('/tmp/test/a')) == {b'/tmp/test/a'}
 
 
@@ -250,11 +256,12 @@ def test_full_read(hdfs):
         assert f.read(4) == b'789'
         assert f.tell() == 10
 
-def test_tail(hdfs):
+def test_tail_head(hdfs):
     with hdfs.open(a, 'w') as f:
         f.write(b'0123456789')
 
     assert hdfs.tail(a, 3) == b'789'
+    assert hdfs.head(a, 3) == b'012'
 
 @pytest.yield_fixture
 def conffile():
