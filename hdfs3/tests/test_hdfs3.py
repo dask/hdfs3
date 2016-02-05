@@ -35,7 +35,7 @@ c = b'/tmp/test/c'
 d = b'/tmp/test/d'
 
 
-def test_example(hdfs):
+def test_simple(hdfs):
     data = b'a' * (10 * 2**20)
 
     with hdfs.open(a, 'w', repl=1) as f:

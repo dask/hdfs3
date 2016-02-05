@@ -71,7 +71,7 @@ conf = hdfs_conf()
 def ensure_byte(s):
     """ Give strings that ctypes is guaranteed to handle """
     if hasattr(s, 'encode'):
-        return s.decode()
+        return s.encode()
     else:
         return s
 
@@ -88,7 +88,8 @@ def ensure_string(s):
     """
     if hasattr(s, 'decode'):
         return s.decode()
-    return s
+    else:
+        return s
 
 
 def ensure_trailing_slash(s):
