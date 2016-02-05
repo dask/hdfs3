@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import ctypes
 import multiprocessing
 from multiprocessing import Process, Queue
@@ -11,7 +13,7 @@ import threading
 import pytest
 
 from hdfs3 import HDFileSystem, lib
-from hdfs3.core import conf_to_dict, ensure_byte, ensure_string
+from hdfs3.core import conf_to_dict, ensure_bytes, ensure_string
 from hdfs3.compatibility import PermissionError, bytes, unicode
 from hdfs3.utils import tmpfile
 
@@ -29,10 +31,10 @@ def hdfs():
         hdfs.rm('/tmp/test')
 
 
-a = b'/tmp/test/a'
-b = b'/tmp/test/b'
-c = b'/tmp/test/c'
-d = b'/tmp/test/d'
+a = '/tmp/test/a'
+b = '/tmp/test/b'
+c = '/tmp/test/c'
+d = '/tmp/test/d'
 
 
 def test_simple(hdfs):
@@ -198,20 +200,20 @@ def test_errors(hdfs):
 def test_glob_walk(hdfs):
     hdfs.mkdir('/tmp/test/c/')
     hdfs.mkdir('/tmp/test/c/d/')
-    filenames = [b'a', b'a1', b'a2', b'a3', b'b1', b'c/x1', b'c/x2', b'c/d/x3']
-    filenames = [b'/tmp/test/' + s for s in filenames]
+    filenames = ['a', 'a1', 'a2', 'a3', 'b1', 'c/x1', 'c/x2', 'c/d/x3']
+    filenames = ['/tmp/test/' + s for s in filenames]
     for fn in filenames:
         hdfs.touch(fn)
 
-    assert set(hdfs.glob('/tmp/test/a*')) == set([b'/tmp/test/' + a
-               for a in [b'a', b'a1', b'a2', b'a3']])
+    assert set(hdfs.glob('/tmp/test/a*')) == set(['/tmp/test/' + a
+               for a in ['a', 'a1', 'a2', 'a3']])
     assert len(hdfs.walk('/tmp/test/c/')) == 4
     assert len(hdfs.glob('/tmp/test/c/*')) == 3
     assert len(hdfs.walk('/tmp/test')) == len(filenames) + 2
-    assert set(hdfs.glob('/tmp/test/*')) == set([f for f in filenames if b'/c/'
-                        not in f] + [b'/tmp/test/c'])
+    assert set(hdfs.glob('/tmp/test/*')) == set([f for f in filenames if '/c/'
+                        not in f] + ['/tmp/test/c'])
     assert set(hdfs.glob('/tmp/test/*')).issubset(set(hdfs.walk('/tmp/test/')))
-    assert set(hdfs.glob('/tmp/test/a')) == {b'/tmp/test/a'}
+    assert set(hdfs.glob('/tmp/test/a')) == {'/tmp/test/a'}
 
 
 def test_info(hdfs):
@@ -471,10 +473,13 @@ def test_different_handles_in_processes():
 
 
 def test_ensure():
-    assert isinstance(ensure_byte(''), bytes)
-    assert isinstance(ensure_byte(b''), bytes)
+    assert isinstance(ensure_bytes(''), bytes)
+    assert isinstance(ensure_bytes(b''), bytes)
     assert isinstance(ensure_string(''), unicode)
     assert isinstance(ensure_string(b''), unicode)
+    assert ensure_string({'x': b'', 'y': ''}) == {'x': '', 'y': ''}
+    assert ensure_bytes({'x': b'', 'y': ''}) == {'x': b'', 'y': b''}
+
 
 
 def test_touch_exists(hdfs):

@@ -68,8 +68,10 @@ def conf_to_dict(fname):
 conf = hdfs_conf()
 
 
-def ensure_byte(s):
+def ensure_bytes(s):
     """ Give strings that ctypes is guaranteed to handle """
+    if isinstance(s, dict):
+        return {k: ensure_bytes(v) for k, v in s.items()}
     if hasattr(s, 'encode'):
         return s.encode()
     else:
@@ -86,6 +88,8 @@ def ensure_string(s):
     >>> ensure_string({'x': b'123'})
     {'x': '123'}
     """
+    if isinstance(s, dict):
+        return {k: ensure_string(v) for k, v in s.items()}
     if hasattr(s, 'decode'):
         return s.decode()
     else:
@@ -160,17 +164,17 @@ class HDFileSystem(object):
 
         o = _lib.hdfsNewBuilder()
         _lib.hdfsBuilderSetNameNodePort(o, self.port)
-        _lib.hdfsBuilderSetNameNode(o, ensure_byte(self.host))
+        _lib.hdfsBuilderSetNameNode(o, ensure_bytes(self.host))
         if self.user:
-            _lib.hdfsBuilderSetUserName(o, ensure_byte(self.user))
+            _lib.hdfsBuilderSetUserName(o, ensure_bytes(self.user))
         if self.ticket_cache:
-            _lib.hdfsBuilderSetKerbTicketCachePath(o, ensure_byte(self.ticket_cache))
+            _lib.hdfsBuilderSetKerbTicketCachePath(o, ensure_bytes(self.ticket_cache))
         if self.token:
-            _lib.hdfsBuilderSetToken(o, ensure_byte(self.token))
+            _lib.hdfsBuilderSetToken(o, ensure_bytes(self.token))
         if self.pars:
             for par in self.pars:
-                if not  _lib.hdfsBuilderConfSetStr(o, ensure_byte(par),
-                                          ensure_byte(self.pars(par))) == 0:
+                if not  _lib.hdfsBuilderConfSetStr(o, ensure_bytes(par),
+                                          ensure_bytes(self.pars(par))) == 0:
                     warnings.warn('Setting conf parameter %s failed' % par)
         fs = _lib.hdfsBuilderConnect(o)
         if fs:
@@ -178,7 +182,7 @@ class HDFileSystem(object):
             self._handle = fs
             #if self.token:   # TODO: find out what a delegation token is
             #    self._token = _lib.hdfsGetDelegationToken(self._handle,
-            #                                             ensure_byte(self.user))
+            #                                             ensure_bytes(self.user))
         else:
             raise RuntimeError('Connection Failed')
 
@@ -244,7 +248,7 @@ class HDFileSystem(object):
         start = int(start) or 0
         length = int(length) or self.info(path)['size']
         nblocks = ctypes.c_int(0)
-        out = _lib.hdfsGetFileBlockLocations(self._handle, ensure_byte(path),
+        out = _lib.hdfsGetFileBlockLocations(self._handle, ensure_bytes(path),
                                 ctypes.c_int64(start), ctypes.c_int64(length),
                                 ctypes.byref(nblocks))
         locs = []
@@ -261,10 +265,10 @@ class HDFileSystem(object):
         """ File information (as a dict) """
         if not self.exists(path):
             raise FileNotFoundError(path)
-        fi = _lib.hdfsGetPathInfo(self._handle, ensure_byte(path)).contents
+        fi = _lib.hdfsGetPathInfo(self._handle, ensure_bytes(path)).contents
         out = info_to_dict(fi)
         _lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
-        return out
+        return ensure_string(out)
 
     def walk(self, path):
         """ Get all file entries below given path """
@@ -277,25 +281,27 @@ class HDFileSystem(object):
         to a file, without any "*", returns one-element list containing that
         filename. Does not support python3.5's "**" notation.
         """
-        path = ensure_byte(path)
+        path = ensure_string(path)
         try:
             f = self.info(path)
-            if f['kind'] == 'directory' and b"*" not in path:
-                path = path + b"*"
+            if f['kind'] == 'directory' and '*' not in path:
+                path = path + '*'
             else:
                 return [f['name']]
         except IOError:
             pass
-        if b'/' in path[:path.index(b'*')]:
-            ind = path[:path.index(b'*')].rindex(b'/')
+        if '/' in path[:path.index('*')]:
+            ind = path[:path.index('*')].rindex('/')
             root = path[:ind+1]
         else:
-            root = b'/'
+            root = '/'
         allfiles = self.walk(root)
-        pattern = re.compile(b"^" + path.replace(b'//', b'/').rstrip(
-                             b'/').replace(b'*', b'[^/]*').replace(b'?', b'.') + b"$")
+        pattern = re.compile("^" + path.replace('//', '/')
+                                        .rstrip('/')
+                                        .replace('*', '[^/]*')
+                                        .replace('?', '.') + "$")
         out = [f for f in allfiles if re.match(pattern,
-               f.replace(b'//', b'/').rstrip(b'/'))]
+               f.replace('//', '/').rstrip('/'))]
         return out
 
     def ls(self, path, detail=True):
@@ -312,8 +318,8 @@ class HDFileSystem(object):
         if not self.exists(path):
             raise FileNotFoundError(path)
         num = ctypes.c_int(0)
-        fi = _lib.hdfsListDirectory(self._handle, ensure_byte(path), ctypes.byref(num))
-        out = [info_to_dict(fi[i]) for i in range(num.value)]
+        fi = _lib.hdfsListDirectory(self._handle, ensure_bytes(path), ctypes.byref(num))
+        out = [ensure_string(info_to_dict(fi[i])) for i in range(num.value)]
         _lib.hdfsFreeFileInfo(fi, num.value)
         if detail:
             return out
@@ -330,7 +336,7 @@ class HDFileSystem(object):
 
     def mkdir(self, path):
         """ Make directory at path """
-        out = _lib.hdfsCreateDirectory(self._handle, ensure_byte(path))
+        out = _lib.hdfsCreateDirectory(self._handle, ensure_bytes(path))
         if out != 0:
             raise IOError('Create directory failed')
 
@@ -344,7 +350,7 @@ class HDFileSystem(object):
         """
         if replication < 0:
             raise ValueError('Replication must be positive, or 0 for system default')
-        out = _lib.hdfsSetReplication(self._handle, ensure_byte(path),
+        out = _lib.hdfsSetReplication(self._handle, ensure_bytes(path),
                                      ctypes.c_int16(int(replication)))
         if out != 0:
             raise IOError('Set replication failed')
@@ -353,27 +359,27 @@ class HDFileSystem(object):
         """ Move file at path1 to path2 """
         if not self.exists(path1):
             raise FileNotFoundError(path1)
-        out = _lib.hdfsRename(self._handle, ensure_byte(path1), ensure_byte(path2))
+        out = _lib.hdfsRename(self._handle, ensure_bytes(path1), ensure_bytes(path2))
         return out == 0
 
     def rm(self, path, recursive=True):
         "Use recursive for `rm -r`, i.e., delete directory and contents"
         if not self.exists(path):
             raise FileNotFoundError(path)
-        out = _lib.hdfsDelete(self._handle, ensure_byte(path), bool(recursive))
+        out = _lib.hdfsDelete(self._handle, ensure_bytes(path), bool(recursive))
         if out != 0:
             raise IOError('Remove failed on %s' % path)
 
     def exists(self, path):
         """ Is there an entry at path? """
-        out = _lib.hdfsExists(self._handle, ensure_byte(path) )
+        out = _lib.hdfsExists(self._handle, ensure_bytes(path) )
         return out == 0
 
     def chmod(self, path, mode):
         """ Mode in numerical format (give as octal, if convenient) """
         if not self.exists(path):
             raise FileNotFoundError(path)
-        out = _lib.hdfsChmod(self._handle, ensure_byte(path), ctypes.c_short(int(mode)))
+        out = _lib.hdfsChmod(self._handle, ensure_bytes(path), ctypes.c_short(int(mode)))
         if out != 0:
             raise IOError("chmod failed on %s" % path)
 
@@ -381,8 +387,8 @@ class HDFileSystem(object):
         """ Change owner/group """
         if not self.exists(path):
             raise FileNotFoundError(path)
-        out = _lib.hdfsChown(self._handle, ensure_byte(path), ensure_byte(owner),
-                            ensure_byte(group))
+        out = _lib.hdfsChown(self._handle, ensure_bytes(path), ensure_bytes(owner),
+                            ensure_bytes(group))
         if out != 0:
             raise IOError("chown failed on %s" % path)
 
@@ -488,7 +494,7 @@ class HDFileSystem(object):
 
 def struct_to_dict(s):
     """ Return dictionary vies of a simple ctypes record-like structure """
-    return dict((name, getattr(s, name)) for (name, p) in s._fields_)
+    return dict((ensure_string(name), getattr(s, name)) for (name, p) in s._fields_)
 
 
 def info_to_dict(s):
@@ -516,7 +522,7 @@ class HDFile(object):
         self._set_handle()
 
     def _set_handle(self):
-        out = _lib.hdfsOpenFile(self._fs, ensure_byte(self.path),
+        out = _lib.hdfsOpenFile(self._fs, ensure_bytes(self.path),
                 mode_numbers[self.mode], self.buff,
                             ctypes.c_short(self.repl), ctypes.c_int64(self.block_size))
         if not out:
@@ -565,7 +571,7 @@ class HDFile(object):
 
         Line iteration uses this method internally.
         """
-        lineterminator = ensure_byte(lineterminator)
+        lineterminator = ensure_bytes(lineterminator)
         lines = getattr(self, 'lines', [])
         if len(lines) < 1:
             buff = self.read(chunksize)
@@ -640,7 +646,7 @@ class HDFile(object):
 
     def write(self, data):
         """ Write bytes to open file (which must be in w or a mode) """
-        data = ensure_byte(data)
+        data = ensure_bytes(data)
         if not _lib.hdfsFileIsOpenForWrite(self._handle):
             raise IOError('File not write mode')
         if not _lib.hdfsWrite(self._fs, self._handle, data, len(data)) == len(data):
