@@ -11,8 +11,9 @@ import threading
 import pytest
 
 from hdfs3 import HDFileSystem, lib
-from hdfs3.core import conf_to_dict
-from hdfs3.compatibility import PermissionError
+from hdfs3.core import conf_to_dict, ensure_byte, ensure_string
+from hdfs3.compatibility import PermissionError, bytes, unicode
+from hdfs3.utils import tmpfile
 
 
 @pytest.yield_fixture
@@ -44,6 +45,11 @@ def test_example(hdfs):
         out = f.read(len(data))
         assert len(data) == len(out)
         assert out == data
+
+
+def test_idempotent_connect(hdfs):
+    hdfs.connect()
+    hdfs.connect()
 
 
 def test_ls_touch(hdfs):
@@ -102,6 +108,8 @@ def test_seek(hdfs):
             f.seek(-1)
         with pytest.raises(ValueError):
             f.seek(-5, 2)
+        with pytest.raises(ValueError):
+            f.seek(0, 10)
         f.seek(0)
         assert f.read(1) == b'1'
         f.seek(0)
@@ -115,6 +123,7 @@ def test_seek(hdfs):
         assert f.read(1) == b'2'
         for i in range(4):
             assert f.seek(i) == i
+
 
 
 def test_libload():
@@ -259,7 +268,8 @@ def test_cat(hdfs):
     with hdfs.open(a, 'w') as f:
         f.write(b'0123456789')
     assert hdfs.cat(a) == b'0123456789'
-
+    with pytest.raises(IOError):
+        hdfs.cat(b)
 
 def test_full_read(hdfs):
     with hdfs.open(a, 'w') as f:
@@ -287,6 +297,8 @@ def test_tail_head(hdfs):
 
     assert hdfs.tail(a, 3) == b'789'
     assert hdfs.head(a, 3) == b'012'
+    assert hdfs.tail(a, 100) == b'0123456789'
+
 
 @pytest.yield_fixture
 def conffile():
@@ -456,3 +468,106 @@ def test_different_handles_in_processes():
 
     for p in procs:
         p.join()
+
+
+def test_ensure():
+    assert isinstance(ensure_byte(''), bytes)
+    assert isinstance(ensure_byte(b''), bytes)
+    assert isinstance(ensure_string(''), unicode)
+    assert isinstance(ensure_string(b''), unicode)
+
+
+def test_touch_exists(hdfs):
+    hdfs.touch(a)
+    assert hdfs.exists(a)
+
+
+def test_write_in_read_mode(hdfs):
+    hdfs.touch(a)
+
+    with hdfs.open(a, 'r') as f:
+        with pytest.raises(IOError):
+            f.write(b'')
+
+
+def test_readlines(hdfs):
+    with hdfs.open(a, 'w') as f:
+        f.write(b'123\n456')
+
+    with hdfs.open(a, 'r') as f:
+        lines = f.readlines()
+        assert lines == [b'123', b'456']
+
+    with hdfs.open(a, 'w') as f:
+        with pytest.raises(IOError):
+            f.read()
+
+
+def test_put(hdfs):
+    data = b'1234567890' * 10000
+    with tmpfile() as fn:
+        with open(fn, 'wb') as f:
+            f.write(data)
+
+        hdfs.put(fn, a)
+
+        assert hdfs.cat(a) == data
+
+
+def test_getmerge(hdfs):
+    with hdfs.open(a, 'w') as f:
+        f.write(b'123')
+    with hdfs.open(b, 'w') as f:
+        f.write(b'456')
+
+    with tmpfile() as fn:
+        hdfs.getmerge('/tmp/test', fn)
+
+        with open(fn, 'rb') as f:
+            data = f.read()
+        assert data == b'123456'
+
+
+def test_get(hdfs):
+    data = b'1234567890'
+    with tmpfile() as fn:
+        with hdfs.open(a, 'w') as f:
+            f.write(data)
+
+        hdfs.get(a, fn)
+
+        with open(fn, 'rb') as f:
+            data2 = f.read()
+        assert data2 == data
+
+    with pytest.raises(IOError):
+        hdfs.get(b, fn)
+
+
+def test_open_errors(hdfs):
+    hdfs.touch(a)
+    with pytest.raises(ValueError):
+        hdfs.open(a, 'r', block_size=1000)
+
+    hdfs.disconnect()
+    with pytest.raises(IOError):
+        hdfs.open(a, 'w')
+
+
+def test_du(hdfs):
+    with hdfs.open(a, 'w') as f:
+        f.write(b'123')
+    with hdfs.open(b, 'w') as f:
+        f.write(b'4567')
+
+    assert hdfs.du('/tmp/test') == {a: 3, b: 4}
+    assert hdfs.du('/tmp/test/', total=True) == {'/tmp/test/': 3 + 4}
+
+
+def test_get_block_locations(hdfs):
+    with hdfs.open(a, 'w') as f:
+        f.write(b'123')
+
+    locs = hdfs.get_block_locations(a)
+    assert len(locs) == 1
+    assert locs[0]['length'] == 3

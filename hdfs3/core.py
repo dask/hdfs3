@@ -32,9 +32,9 @@ def hdfs_conf():
         except FileNotFoundError:
             pass
     if 'fs.defaultFS' in conf:
-        u = urlparse(conf['fs.defaultFS'])
-        conf['host'] = u.hostname
-        conf['port'] = u.port
+        u = urlparse(conf['fs.defaultFS'])  # pragma: no cover
+        conf['host'] = u.hostname  # pragma: no cover
+        conf['port'] = u.port  # pragma: no cover
     return conf
 
 
@@ -70,14 +70,9 @@ conf = hdfs_conf()
 
 def ensure_byte(s):
     """ Give strings that ctypes is guaranteed to handle """
-    if PY3:
-        if isinstance(s, str):
-            return s.encode('ascii')
-        elif isinstance(s, bytes):
-            return s
-        else:
-            raise ValueError('Could not convert %s to bytes' % s)
-    else:  # in PY2, strings are fine for ctypes
+    if hasattr(s, 'encode'):
+        return s.decode()
+    else:
         return s
 
 
@@ -85,7 +80,11 @@ def ensure_string(s):
     """ Ensure that the result is a string
 
     >>> ensure_string(b'123')
-    u'123'
+    '123'
+    >>> ensure_string('123')
+    '123'
+    >>> ensure_string({'x': b'123'})
+    {'x': '123'}
     """
     if hasattr(s, 'decode'):
         return s.decode()
@@ -104,19 +103,6 @@ def ensure_trailing_slash(s):
     if not s.endswith(slash):
         s += slash
     return s
-
-
-def init_kerb():
-    """ Find Kerberos credentials.
-
-    Use system kinit to find credentials.
-    Set up by editing krb5.conf
-    """
-    raise NotImplementedError("Please set your credentials manually")
-    out1 = subprocess.check_call(['kinit'])
-    out2 = subprocess.check_call(['klist'])
-    HDFileSystem.ticket_cache = None
-    HDFileSystem.token = None
 
 
 class HDFileSystem(object):
@@ -169,7 +155,7 @@ class HDFileSystem(object):
         This happens automatically at startup
         """
         if self._handle:
-            raise ValueError("Already connected")
+            return
 
         o = _lib.hdfsNewBuilder()
         _lib.hdfsBuilderSetNameNodePort(o, self.port)
@@ -235,13 +221,7 @@ class HDFileSystem(object):
         deep : bool (False)
             whether to recurse into subdirectories
         """
-        if isinstance(total, str):
-            total = total=='True'
-        if isinstance(deep, str):
-            deep = deep=='True'
         fi = self.ls(path)
-        if len(fi) == 0:
-            raise IOError('Not Found')
         if deep:
             for apath in fi:
                 if apath['kind'] == 'directory':
@@ -388,13 +368,6 @@ class HDFileSystem(object):
         out = _lib.hdfsExists(self._handle, ensure_byte(path) )
         return out == 0
 
-    def truncate(self, path, pos):
-        # Does not appear to ever succeed
-        out = _lib.hdfsTruncate(self._handle, ensure_byte(path),
-                               ctypes.c_int64(int(pos)), 0)
-        if out != 0:
-            raise IOError('truncate failed on %s' % path)
-
     def chmod(self, path, mode):
         """ Mode in numerical format (give as octal, if convenient) """
         if not self.exists(path):
@@ -420,19 +393,19 @@ class HDFileSystem(object):
             result = f.read()
         return result
 
-    def get(self, path, filename):
+    def get(self, hdfs_path, local_path, blocksize=2**16):
         """ Copy HDFS file to local """
         #TODO: _lib.hdfsCopy() may do this more efficiently
-        if not self.exists(path):
-            raise FileNotFoundError(path)
-        with self.open(path, 'r') as f:
-            with open(filename, 'wb') as f2:
+        if not self.exists(hdfs_path):
+            raise FileNotFoundError(hdfs_path)
+        with self.open(hdfs_path, 'r') as f:
+            with open(local_path, 'wb') as f2:
                 out = 1
                 while out:
-                    out = f.read()
+                    out = f.read(blocksize)
                     f2.write(out)
 
-    def getmerge(self, path, filename):
+    def getmerge(self, path, filename, blocksize=2**16):
         """ Concat all files in path (a directory) to output file """
         files = self.ls(path)
         with open(filename, 'wb') as f2:
@@ -440,7 +413,7 @@ class HDFileSystem(object):
                 with self.open(apath['name'], 'r') as f:
                     out = 1
                     while out:
-                        out = f.read()
+                        out = f.read(blocksize)
                         f2.write(out)
 
     def put(self, filename, path, chunk=2**16):
@@ -657,7 +630,7 @@ class HDFile(object):
             raise ValueError('Attempt to seek outside file')
         out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(offset))
         if out == -1:
-            raise IOError('Seek Failed on file %s' % self.path)
+            raise IOError('Seek Failed on file %s' % self.path)  # pragma: no cover
         return self.tell()
 
     def info(self):
@@ -682,12 +655,6 @@ class HDFile(object):
         _lib.hdfsCloseFile(self._fs, self._handle)
         self._handle = None  # _libhdfs releases memory
         self.mode = 'closed'
-
-    def get_block_locs(self):
-        """
-        Get host locations and offsets of all blocks that compose this file
-        """
-        return self.fs.get_block_locations(self.path)
 
     def __del__(self):
         self.close()

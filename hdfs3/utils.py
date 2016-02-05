@@ -1,3 +1,10 @@
+
+from contextlib import contextmanager
+import os
+import shutil
+import tempfile
+
+
 def seek_delimiter(file, delimiter, blocksize):
     """ Seek current file to next byte after a delimiter bytestring
 
@@ -85,3 +92,22 @@ def read_block(f, offset, length, delimiter=None):
     f.seek(offset)
     bytes = f.read(length)
     return bytes
+
+
+@contextmanager
+def tmpfile(extension=''):
+    extension = '.' + extension.lstrip('.')
+    handle, filename = tempfile.mkstemp(extension)
+    os.close(handle)
+    os.remove(filename)
+
+    yield filename
+
+    if os.path.exists(filename):
+        if os.path.isdir(filename):
+            shutil.rmtree(filename)
+        else:
+            try:
+                os.remove(filename)
+            except OSError:  # sometimes we can't remove a generated temp file
+                pass
