@@ -192,7 +192,7 @@ def test_errors(hdfs):
         hdfs.chown('/unknown', 'someone', 'group')
 
     with pytest.raises(IOError):
-        hdfs.chmod('/unknonwn', 0)
+        hdfs.chmod('/unknonwn', 'r')
 
     with pytest.raises(IOError):
         hdfs.rm('/unknown')
@@ -609,3 +609,27 @@ def test_get_block_locations(hdfs):
     locs = hdfs.get_block_locations(a)
     assert len(locs) == 1
     assert locs[0]['length'] == 3
+
+
+def test_chmod(hdfs):
+    hdfs.touch(a)
+    hdfs.chmod(a, 'r')
+
+    with pytest.raises(IOError):
+        hdfs.open(a, 'a')
+
+
+@pytest.mark.xfail
+def test_chmod_write(hdfs):
+    hdfs.chmod(a, 'r')
+    hdfs.chmod(a, 'w')
+
+    with hdfs.open(a, 'a') as f:
+        pass
+
+
+@pytest.mark.xfail
+def test_chown(hdfs):
+    hdfs.touch(a)
+    i = hdfs.info(a)
+    hdfs.chown(a, 'root', 'supergroup')

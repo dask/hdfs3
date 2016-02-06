@@ -382,9 +382,10 @@ class HDFileSystem(object):
 
     def chmod(self, path, mode):
         """ Mode in numerical format (give as octal, if convenient) """
+        imode = mode_numbers[mode]
         if not self.exists(path):
             raise FileNotFoundError(path)
-        out = _lib.hdfsChmod(self._handle, ensure_bytes(path), ctypes.c_short(int(mode)))
+        out = _lib.hdfsChmod(self._handle, ensure_bytes(path), ctypes.c_short(imode))
         if out != 0:
             raise IOError("chmod failed on %s" % path)
 
