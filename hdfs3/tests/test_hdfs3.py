@@ -197,6 +197,7 @@ def test_errors(hdfs):
     with pytest.raises(IOError):
         hdfs.rm('/unknown')
 
+
 def test_glob_walk(hdfs):
     hdfs.mkdir('/tmp/test/c/')
     hdfs.mkdir('/tmp/test/c/d/')
@@ -205,15 +206,47 @@ def test_glob_walk(hdfs):
     for fn in filenames:
         hdfs.touch(fn)
 
-    assert set(hdfs.glob('/tmp/test/a*')) == set(['/tmp/test/' + a
-               for a in ['a', 'a1', 'a2', 'a3']])
-    assert len(hdfs.walk('/tmp/test/c/')) == 4
-    assert len(hdfs.glob('/tmp/test/c/*')) == 3
-    assert len(hdfs.walk('/tmp/test')) == len(filenames) + 2
-    assert set(hdfs.glob('/tmp/test/*')) == set([f for f in filenames if '/c/'
-                        not in f] + ['/tmp/test/c'])
-    assert set(hdfs.glob('/tmp/test/*')).issubset(set(hdfs.walk('/tmp/test/')))
+    assert set(hdfs.glob('/tmp/test/a*')) == {'/tmp/test/a',
+                                              '/tmp/test/a1',
+                                              '/tmp/test/a2',
+                                              '/tmp/test/a3'}
+
+    assert set(hdfs.glob('/tmp/test/c/*')) == {'/tmp/test/c/x1',
+                                               '/tmp/test/c/x2',
+                                               '/tmp/test/c/d'}
+    assert (set(hdfs.glob('/tmp/test/c')) ==
+            set(hdfs.glob('/tmp/test/c/')) ==
+            set(hdfs.glob('/tmp/test/c/*')))
+
     assert set(hdfs.glob('/tmp/test/a')) == {'/tmp/test/a'}
+    assert set(hdfs.glob('/tmp/test/a1')) == {'/tmp/test/a1'}
+
+    assert set(hdfs.glob('/tmp/test/*')) == {'/tmp/test/a',
+                                             '/tmp/test/a1',
+                                             '/tmp/test/a2',
+                                             '/tmp/test/a3',
+                                             '/tmp/test/b1',
+                                             '/tmp/test/c'}
+
+    assert set(hdfs.walk('/tmp/test')) == {'/tmp/test',
+                                           '/tmp/test/a',
+                                           '/tmp/test/a1',
+                                           '/tmp/test/a2',
+                                           '/tmp/test/a3',
+                                           '/tmp/test/b1',
+                                           '/tmp/test/c',
+                                           '/tmp/test/c/x1',
+                                           '/tmp/test/c/x2',
+                                           '/tmp/test/c/d',
+                                           '/tmp/test/c/d/x3'}
+
+    assert set(hdfs.walk('/tmp/test/c/')) == {'/tmp/test/c',
+                                              '/tmp/test/c/x1',
+                                              '/tmp/test/c/x2',
+                                              '/tmp/test/c/d',
+                                              '/tmp/test/c/d/x3'}
+
+    assert set(hdfs.walk('/tmp/test/c/')) == set(hdfs.walk('/tmp/test/c'))
 
 
 def test_info(hdfs):

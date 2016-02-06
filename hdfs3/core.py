@@ -96,17 +96,21 @@ def ensure_string(s):
         return s
 
 
-def ensure_trailing_slash(s):
+def ensure_trailing_slash(s, ensure=True):
     """ Ensure that string ends with a slash
 
     >>> ensure_trailing_slash('/user/directory')
     '/user/directory/'
     >>> ensure_trailing_slash('/user/directory/')
     '/user/directory/'
+    >>> ensure_trailing_slash('/user/directory/', False)
+    '/user/directory'
     """
     slash = '/' if isinstance(s, str) else b'/'
-    if not s.endswith(slash):
+    if ensure and not s.endswith(slash):
         s += slash
+    if not ensure and s.endswith(slash):
+        s = s[:-1]
     return s
 
 
@@ -272,7 +276,8 @@ class HDFileSystem(object):
 
     def walk(self, path):
         """ Get all file entries below given path """
-        return self.du(path, False, True).keys()
+        return ([ensure_trailing_slash(ensure_string(path), False)]
+                + list(self.du(path, False, True).keys()))
 
     def glob(self, path):
         """ Get list of paths mathing glob-like pattern (i.e., with "*"s).
@@ -285,7 +290,7 @@ class HDFileSystem(object):
         try:
             f = self.info(path)
             if f['kind'] == 'directory' and '*' not in path:
-                path = path + '*'
+                path = ensure_trailing_slash(path) + '*'
             else:
                 return [f['name']]
         except IOError:
