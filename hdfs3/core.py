@@ -72,6 +72,8 @@ def ensure_bytes(s):
     """ Give strings that ctypes is guaranteed to handle """
     if isinstance(s, dict):
         return {k: ensure_bytes(v) for k, v in s.items()}
+    if isinstance(s, str) and sys.version_info < (3,):
+        return s
     if hasattr(s, 'encode'):
         return s.encode()
     else:
