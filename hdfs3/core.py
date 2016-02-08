@@ -383,11 +383,26 @@ class HDFileSystem(object):
         return out == 0
 
     def chmod(self, path, mode):
-        """ Mode in numerical format (give as octal, if convenient) """
-        imode = mode_numbers[mode]
+        """Change access control of given path
+
+        Exactly what permissions the file will get depends on HDFS
+        configurations.
+
+        Parameters
+        ----------
+        path : string
+            file/directory to change
+
+        mode : integer
+            As with the POSIX standard, each octal digit refers to
+        user-group-all, in that order, with read-write-execute as the
+        bits of each group. E.g.,
+        - 0o777 -> permissive;
+        - 0o711 -> all permission for owner, read-only for others;
+        - 0o100 -> read-only for owner, nothing for others."""
         if not self.exists(path):
             raise FileNotFoundError(path)
-        out = _lib.hdfsChmod(self._handle, ensure_bytes(path), ctypes.c_short(imode))
+        out = _lib.hdfsChmod(self._handle, ensure_bytes(path), ctypes.c_short(mode))
         if out != 0:
             raise IOError("chmod failed on %s" % path)
 

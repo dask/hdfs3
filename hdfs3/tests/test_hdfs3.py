@@ -613,8 +613,10 @@ def test_get_block_locations(hdfs):
 
 def test_chmod(hdfs):
     hdfs.touch(a)
-    hdfs.chmod(a, 'r')
-
+    assert hdfs.ls(a)[0]['permissions'] == 0o777
+    hdfs.chmod(a, 0o500)
+    assert hdfs.ls(a)[0]['permissions'] == 0o500
+    hdfs.chmod(a, 0o100)
     with pytest.raises(IOError):
         hdfs.open(a, 'a')
 
