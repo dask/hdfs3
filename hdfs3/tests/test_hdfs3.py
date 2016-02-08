@@ -642,3 +642,8 @@ def test_text_bytes(hdfs):
         b = f.read()
 
     assert b == b'123'
+
+
+def test_open_deep_file(hdfs):
+    with pytest.raises(IOError):
+        f = hdfs.open('/tmp/test/a/b/c/d/e/f', 'wb')
