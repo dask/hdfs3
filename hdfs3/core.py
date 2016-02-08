@@ -203,7 +203,7 @@ class HDFileSystem(object):
         path: string
             Path of file on HDFS
         mode: string
-            One of 'r', 'w', or 'a'
+            One of 'rb', 'wb', or 'ab'
         repl: int
             Replication factor; if zero, use system default (only on write)
         block_size: int
@@ -211,7 +211,7 @@ class HDFileSystem(object):
         """
         if not self._handle:
             raise IOError("Filesystem not connected")
-        if block_size and mode != 'w':
+        if block_size and mode != 'wb':
             raise ValueError('Block size only valid when writing new file')
         return HDFile(self, path, mode, repl=repl, buff=buff,
                 block_size=block_size)
@@ -418,7 +418,7 @@ class HDFileSystem(object):
         """ Return contents of file """
         if not self.exists(path):
             raise FileNotFoundError(path)
-        with self.open(path, 'r') as f:
+        with self.open(path, 'rb') as f:
             result = f.read()
         return result
 
@@ -427,7 +427,7 @@ class HDFileSystem(object):
         #TODO: _lib.hdfsCopy() may do this more efficiently
         if not self.exists(hdfs_path):
             raise FileNotFoundError(hdfs_path)
-        with self.open(hdfs_path, 'r') as f:
+        with self.open(hdfs_path, 'rb') as f:
             with open(local_path, 'wb') as f2:
                 out = 1
                 while out:
@@ -439,7 +439,7 @@ class HDFileSystem(object):
         files = self.ls(path)
         with open(filename, 'wb') as f2:
             for apath in files:
-                with self.open(apath['name'], 'r') as f:
+                with self.open(apath['name'], 'rb') as f:
                     out = 1
                     while out:
                         out = f.read(blocksize)
@@ -447,7 +447,7 @@ class HDFileSystem(object):
 
     def put(self, filename, path, chunk=2**16):
         """ Copy local file to path in HDFS """
-        with self.open(path, 'w') as f:
+        with self.open(path, 'wb') as f:
             with open(filename, 'rb') as f2:
                 while True:
                     out = f2.read(chunk)
@@ -460,18 +460,18 @@ class HDFileSystem(object):
         length = self.du(path)[ensure_trailing_slash(path)]
         if size > length:
             return self.cat(path)
-        with self.open(path, 'r') as f:
+        with self.open(path, 'rb') as f:
             f.seek(length - size)
             return f.read(size)
 
     def head(self, path, size=1024):
         """ Return first bytes of file """
-        with self.open(path, 'r') as f:
+        with self.open(path, 'rb') as f:
             return f.read(size)
 
     def touch(self, path):
         """ Create zero-length file """
-        self.open(path, 'w').close()
+        self.open(path, 'wb').close()
 
     def read_block(self, fn, offset, length, delimiter=None):
         """ Read a block of bytes from an HDFS file
@@ -506,7 +506,7 @@ class HDFileSystem(object):
         --------
         hdfs3.utils.read_block
         """
-        with self.open(fn, 'r') as f:
+        with self.open(fn, 'rb') as f:
             size = f.info()['size']
             if offset + length > size:
                 length = size - offset

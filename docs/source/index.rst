@@ -23,7 +23,7 @@ as well as a typical Pythonic interface.
 
    >>> hdfs.cp('/user/data/file.txt', '/user2/data')
 
-   >>> with hdfs.open('/user/data/file.txt') as f:
+   >>> with hdfs.open('/user/data/file.txt', 'rb') as f:
    ...     f.seek(2000)
    ...     bytes = f.read(1000000)
 
