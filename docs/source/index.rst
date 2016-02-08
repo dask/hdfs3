@@ -58,6 +58,7 @@ Related Work
 
    install
    quickstart
+   examples-overview
    hdfs
    api
    limitations
