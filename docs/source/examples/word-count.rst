@@ -1,5 +1,5 @@
-Word count with hdfs3
-=====================
+Word count
+==========
 
 Setup
 -----
