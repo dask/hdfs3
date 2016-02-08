@@ -126,16 +126,12 @@ class HDFileSystem(object):
         """
         Parameters
         ----------
-
         host : str (default from config files)
             namenode (name or IP)
-
         port : int (9000)
             connection port
-
         user, ticket_cache, token : str
             kerberos things
-
         pars : {str: str}
             other parameters for hadoop
         """
@@ -392,7 +388,6 @@ class HDFileSystem(object):
         ----------
         path : string
             file/directory to change
-
         mode : integer
             As with the POSIX standard, each octal digit refers to
             user-group-all, in that order, with read-write-execute as the
@@ -534,7 +529,17 @@ def info_to_dict(s):
 mode_numbers = {'w': 1, 'r': 0, 'a': 1025}
 
 class HDFile(object):
-    """ File on HDFS """
+    """ File on HDFS
+
+    Matches the standard Python file interface.
+
+    Examples
+    --------
+    >>> with hdfs.open('/path/to/hdfs/file.txt') as f:  # doctest: +SKIP
+    ...     bytes = f.read(1000)  # doctest: +SKIP
+    >>> with hdfs.open('/path/to/hdfs/file.csv') as f:  # doctest: +SKIP
+    ...     df = pd.read_csv(f, nrows=1000)  # doctest: +SKIP
+    """
     def __init__(self, fs, path, mode, repl=0, buff=0, block_size=0):
         """ Called by open on a HDFileSystem """
         self.fs = fs
