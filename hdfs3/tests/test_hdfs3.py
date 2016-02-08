@@ -647,3 +647,18 @@ def test_text_bytes(hdfs):
 def test_open_deep_file(hdfs):
     with pytest.raises(IOError):
         f = hdfs.open('/tmp/test/a/b/c/d/e/f', 'wb')
+
+
+def test_append(hdfs):
+    with hdfs.open(a, mode='ab') as f:
+        f.write(b'123')
+    with hdfs.open(a, mode='ab') as f:
+        f.write(b'456')
+
+    with hdfs.open(a, mode='rb') as f:
+        assert f.read() == b'123456'
+
+    with hdfs.open(a, mode='ab') as f:
+        f.write(b'789')
+    with hdfs.open(a, mode='rb') as f:
+        assert f.read() == b'123456789'
