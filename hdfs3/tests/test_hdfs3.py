@@ -622,16 +622,23 @@ def test_chmod(hdfs):
 
 
 @pytest.mark.xfail
-def test_chmod_write(hdfs):
-    hdfs.chmod(a, 'r')
-    hdfs.chmod(a, 'w')
-
-    with hdfs.open(a, 'a') as f:
-        pass
-
-
-@pytest.mark.xfail
 def test_chown(hdfs):
     hdfs.touch(a)
     i = hdfs.info(a)
     hdfs.chown(a, 'root', 'supergroup')
+
+
+def test_text_bytes(hdfs):
+    with pytest.raises(NotImplementedError):
+        hdfs.open(a, 'wt')
+
+    with pytest.raises(NotImplementedError):
+        hdfs.open(a, 'rt')
+
+    with hdfs.open(a, 'wb') as f:
+        f.write(b'123')
+
+    with hdfs.open(a, 'rb') as f:
+        b = f.read()
+
+    assert b == b'123'

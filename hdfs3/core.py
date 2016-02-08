@@ -195,7 +195,7 @@ class HDFileSystem(object):
             _lib.hdfsDisconnect(self._handle)
         self._handle = None
 
-    def open(self, path, mode='r', repl=0, buff=0, block_size=0):
+    def open(self, path, mode='rb', repl=0, buff=0, block_size=0):
         """ Open a file for reading or writing
 
         Parameters
@@ -526,7 +526,8 @@ def info_to_dict(s):
     return d
 
 
-mode_numbers = {'w': 1, 'r': 0, 'a': 1025}
+mode_numbers = {'w': 1, 'r': 0, 'a': 1025,
+                'wb': 1, 'rb': 0, 'ab': 1025}
 
 class HDFile(object):
     """ File on HDFS
@@ -542,6 +543,8 @@ class HDFile(object):
     """
     def __init__(self, fs, path, mode, repl=0, buff=0, block_size=0):
         """ Called by open on a HDFileSystem """
+        if 't' in mode:
+            raise NotImplementedError("Opening a file in text mode is not yet supported")
         self.fs = fs
         self.path = path
         self.repl = repl
