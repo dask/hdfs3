@@ -395,11 +395,15 @@ class HDFileSystem(object):
 
         mode : integer
             As with the POSIX standard, each octal digit refers to
-        user-group-all, in that order, with read-write-execute as the
-        bits of each group. E.g.,
-        - 0o777 -> permissive;
-        - 0o711 -> all permission for owner, read-only for others;
-        - 0o100 -> read-only for owner, nothing for others."""
+            user-group-all, in that order, with read-write-execute as the
+            bits of each group.
+
+        Examples
+        --------
+        >>> hdfs.chmod('/path/to/file', 0o777)  # make read/writeable to all # doctest: +SKIP
+        >>> hdfs.chmod('/path/to/file', 0o700)  # make read/writeable only to user # doctest: +SKIP
+        >>> hdfs.chmod('/path/to/file', 0o100)  # make read-only to user # doctest: +SKIP
+        """
         if not self.exists(path):
             raise FileNotFoundError(path)
         out = _lib.hdfsChmod(self._handle, ensure_bytes(path), ctypes.c_short(mode))
