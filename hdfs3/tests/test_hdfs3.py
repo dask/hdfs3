@@ -40,7 +40,7 @@ d = '/tmp/test/d'
 def test_simple(hdfs):
     data = b'a' * (10 * 2**20)
 
-    with hdfs.open(a, 'wb', repl=1) as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(data)
 
     with hdfs.open(a, 'rb') as f:
@@ -74,7 +74,7 @@ def test_rm(hdfs):
 
 def test_pickle(hdfs):
     data = b'a' * (10 * 2**20)
-    with hdfs.open(a, 'wb', repl=1) as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(data)
 
     assert hdfs._handle
@@ -85,7 +85,7 @@ def test_pickle(hdfs):
     hdfs2.touch(b)
     hdfs2.ls(b)
 
-    with hdfs2.open(c, 'wb', repl=1) as f:
+    with hdfs2.open(c, 'wb', replication=1) as f:
         f.write(data)
         assert f._handle
 
@@ -94,13 +94,13 @@ def test_pickle(hdfs):
         f.read(10)
         assert f._handle
 
-    with hdfs.open(d, 'wb', repl=1) as f:
+    with hdfs.open(d, 'wb', replication=1) as f:
         f.write(data)
         assert f._handle
 
 
 def test_seek(hdfs):
-    with hdfs.open(a, 'wb', repl=1) as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(b'123')
 
     with hdfs.open(a) as f:
@@ -156,18 +156,18 @@ def test_write_blocksize(hdfs):
 
 def test_replication(hdfs):
     path = '/tmp/test/afile'
-    hdfs.open(path, 'wb', repl=0).close()
+    hdfs.open(path, 'wb', replication=0).close()
     assert hdfs.info(path)['replication'] > 0
-    hdfs.open(path, 'wb', repl=1).close()
+    hdfs.open(path, 'wb', replication=1).close()
     assert hdfs.info(path)['replication'] == 1
-    hdfs.open(path, 'wb', repl=2).close()
+    hdfs.open(path, 'wb', replication=2).close()
     assert hdfs.info(path)['replication'] == 2
     hdfs.set_replication(path, 3)
     assert hdfs.info(path)['replication'] == 3
     with pytest.raises(ValueError):
         hdfs.set_replication(path, -1)
     with pytest.raises(IOError):
-        hdfs.open(path, 'wb', repl=-1).close()
+        hdfs.open(path, 'wb', replication=-1).close()
 
 def test_errors(hdfs):
     with pytest.raises((IOError, OSError)):
@@ -250,7 +250,7 @@ def test_glob_walk(hdfs):
 
 
 def test_info(hdfs):
-    with hdfs.open(a, 'wb', repl=1) as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write('a' * 5)
 
     info = hdfs.info(a)
@@ -263,9 +263,9 @@ def test_info(hdfs):
 
 
 def test_df(hdfs):
-    with hdfs.open(a, 'wb', repl=1) as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write('a' * 10)
-    with hdfs.open(b, 'wb', repl=1) as f:
+    with hdfs.open(b, 'wb', replication=1) as f:
         f.write('a' * 10)
 
     result = hdfs.df()
@@ -650,15 +650,15 @@ def test_open_deep_file(hdfs):
 
 
 def test_append(hdfs):
-    with hdfs.open(a, mode='ab') as f:
+    with hdfs.open(a, mode='ab', replication=1) as f:
         f.write(b'123')
-    with hdfs.open(a, mode='ab') as f:
+    with hdfs.open(a, mode='ab', replication=1) as f:
         f.write(b'456')
 
     with hdfs.open(a, mode='rb') as f:
         assert f.read() == b'123456'
 
-    with hdfs.open(a, mode='ab') as f:
+    with hdfs.open(a, mode='ab', replication=1) as f:
         f.write(b'789')
     with hdfs.open(a, mode='rb') as f:
         assert f.read() == b'123456789'

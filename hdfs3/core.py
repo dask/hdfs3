@@ -195,7 +195,7 @@ class HDFileSystem(object):
             _lib.hdfsDisconnect(self._handle)
         self._handle = None
 
-    def open(self, path, mode='rb', repl=0, buff=0, block_size=0):
+    def open(self, path, mode='rb', replication=0, buff=0, block_size=0):
         """ Open a file for reading or writing
 
         Parameters
@@ -204,7 +204,7 @@ class HDFileSystem(object):
             Path of file on HDFS
         mode: string
             One of 'rb', 'wb', or 'ab'
-        repl: int
+        replication: int
             Replication factor; if zero, use system default (only on write)
         block_size: int
             Size of data-node blocks if writing
@@ -213,7 +213,7 @@ class HDFileSystem(object):
             raise IOError("Filesystem not connected")
         if block_size and mode != 'wb':
             raise ValueError('Block size only valid when writing new file')
-        return HDFile(self, path, mode, repl=repl, buff=buff,
+        return HDFile(self, path, mode, replication=replication, buff=buff,
                 block_size=block_size)
 
     def du(self, path, total=False, deep=False):
@@ -541,13 +541,13 @@ class HDFile(object):
     >>> with hdfs.open('/path/to/hdfs/file.csv') as f:  # doctest: +SKIP
     ...     df = pd.read_csv(f, nrows=1000)  # doctest: +SKIP
     """
-    def __init__(self, fs, path, mode, repl=0, buff=0, block_size=0):
+    def __init__(self, fs, path, mode, replication=0, buff=0, block_size=0):
         """ Called by open on a HDFileSystem """
         if 't' in mode:
             raise NotImplementedError("Opening a file in text mode is not yet supported")
         self.fs = fs
         self.path = path
-        self.repl = repl
+        self.replication = replication
         self.buff = buff
         self._fs = fs._handle
         self.buffer = b''
@@ -558,8 +558,9 @@ class HDFile(object):
 
     def _set_handle(self):
         out = _lib.hdfsOpenFile(self._fs, ensure_bytes(self.path),
-                mode_numbers[self.mode], self.buff,
-                            ctypes.c_short(self.repl), ctypes.c_int64(self.block_size))
+                                mode_numbers[self.mode], self.buff,
+                                ctypes.c_short(self.replication),
+                                ctypes.c_int64(self.block_size))
         if not out:
             raise IOError("Could not open file: %s, mode: %s" %
                           (self.path, self.mode))
