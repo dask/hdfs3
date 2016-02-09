@@ -18,8 +18,8 @@ Write data to file:
 
 .. code-block:: python
 
-   >>> with hdfs.open('/tmp/myfile.txt', 'w') as f:
-   ...     f.write('Hello, world!')
+   >>> with hdfs.open('/tmp/myfile.txt', 'wb') as f:
+   ...     f.write(b'Hello, world!')
 
 Read data back from file:
 

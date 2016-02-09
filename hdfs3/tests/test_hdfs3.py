@@ -40,10 +40,10 @@ d = '/tmp/test/d'
 def test_simple(hdfs):
     data = b'a' * (10 * 2**20)
 
-    with hdfs.open(a, 'w', repl=1) as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(data)
 
-    with hdfs.open(a, 'r') as f:
+    with hdfs.open(a, 'rb') as f:
         out = f.read(len(data))
         assert len(data) == len(out)
         assert out == data
@@ -74,7 +74,7 @@ def test_rm(hdfs):
 
 def test_pickle(hdfs):
     data = b'a' * (10 * 2**20)
-    with hdfs.open(a, 'w', repl=1) as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(data)
 
     assert hdfs._handle
@@ -85,22 +85,22 @@ def test_pickle(hdfs):
     hdfs2.touch(b)
     hdfs2.ls(b)
 
-    with hdfs2.open(c, 'w', repl=1) as f:
+    with hdfs2.open(c, 'wb', replication=1) as f:
         f.write(data)
         assert f._handle
 
-    with hdfs2.open(c, 'r') as f:
+    with hdfs2.open(c, 'rb') as f:
         f.seek(5)
         f.read(10)
         assert f._handle
 
-    with hdfs.open(d, 'w', repl=1) as f:
+    with hdfs.open(d, 'wb', replication=1) as f:
         f.write(data)
         assert f._handle
 
 
 def test_seek(hdfs):
-    with hdfs.open(a, 'w', repl=1) as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(b'123')
 
     with hdfs.open(a) as f:
@@ -141,7 +141,7 @@ def test_bad_open(hdfs):
 
 @pytest.mark.xfail
 def test_write_blocksize(hdfs):
-    with hdfs.open(a, 'w', block_size=10) as f:
+    with hdfs.open(a, 'wb', block_size=10) as f:
         f.write(b'a' * 25)
 
     blocks = hdfs.get_block_locations(a)
@@ -151,27 +151,27 @@ def test_write_blocksize(hdfs):
     assert blocks[2]['length'] == 5
 
     with pytest.raises(ValueError):
-        hdfs.open(a, 'r', block_size=123)
+        hdfs.open(a, 'rb', block_size=123)
 
 
 def test_replication(hdfs):
     path = '/tmp/test/afile'
-    hdfs.open(path, 'w', repl=0).close()
+    hdfs.open(path, 'wb', replication=0).close()
     assert hdfs.info(path)['replication'] > 0
-    hdfs.open(path, 'w', repl=1).close()
+    hdfs.open(path, 'wb', replication=1).close()
     assert hdfs.info(path)['replication'] == 1
-    hdfs.open(path, 'w', repl=2).close()
+    hdfs.open(path, 'wb', replication=2).close()
     assert hdfs.info(path)['replication'] == 2
     hdfs.set_replication(path, 3)
     assert hdfs.info(path)['replication'] == 3
     with pytest.raises(ValueError):
         hdfs.set_replication(path, -1)
     with pytest.raises(IOError):
-        hdfs.open(path, 'w', repl=-1).close()
+        hdfs.open(path, 'wb', replication=-1).close()
 
 def test_errors(hdfs):
     with pytest.raises((IOError, OSError)):
-        hdfs.open('/tmp/test/shfoshf', 'r')
+        hdfs.open('/tmp/test/shfoshf', 'rb')
 
     with pytest.raises((IOError, OSError)):
         hdfs.touch('/tmp/test/shfoshf/x')
@@ -183,16 +183,16 @@ def test_errors(hdfs):
         hdfs.mv('/tmp/test/shfoshf/x', '/tmp/test/shfoshf/y')
 
     with pytest.raises((IOError, OSError)):
-        hdfs.open('/x', 'w')
+        hdfs.open('/x', 'wb')
 
     with pytest.raises((IOError, OSError)):
-        hdfs.open('/x', 'r')
+        hdfs.open('/x', 'rb')
 
     with pytest.raises(IOError):
         hdfs.chown('/unknown', 'someone', 'group')
 
     with pytest.raises(IOError):
-        hdfs.chmod('/unknonwn', 'r')
+        hdfs.chmod('/unknonwn', 'rb')
 
     with pytest.raises(IOError):
         hdfs.rm('/unknown')
@@ -250,7 +250,7 @@ def test_glob_walk(hdfs):
 
 
 def test_info(hdfs):
-    with hdfs.open(a, 'w', repl=1) as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write('a' * 5)
 
     info = hdfs.info(a)
@@ -263,9 +263,9 @@ def test_info(hdfs):
 
 
 def test_df(hdfs):
-    with hdfs.open(a, 'w', repl=1) as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write('a' * 10)
-    with hdfs.open(b, 'w', repl=1) as f:
+    with hdfs.open(b, 'wb', replication=1) as f:
         f.write('a' * 10)
 
     result = hdfs.df()
@@ -300,25 +300,25 @@ def test_exists(hdfs):
 
 
 def test_cat(hdfs):
-    with hdfs.open(a, 'w') as f:
+    with hdfs.open(a, 'wb') as f:
         f.write(b'0123456789')
     assert hdfs.cat(a) == b'0123456789'
     with pytest.raises(IOError):
         hdfs.cat(b)
 
 def test_full_read(hdfs):
-    with hdfs.open(a, 'w') as f:
+    with hdfs.open(a, 'wb') as f:
         f.write(b'0123456789')
 
-    with hdfs.open(a, 'r') as f:
+    with hdfs.open(a, 'rb') as f:
         assert len(f.read(4)) == 4
         assert len(f.read(4)) == 4
         assert len(f.read(4)) == 2
 
-    with hdfs.open(a, 'r') as f:
+    with hdfs.open(a, 'rb') as f:
         assert len(f.read()) == 10
 
-    with hdfs.open(a, 'r') as f:
+    with hdfs.open(a, 'rb') as f:
         assert f.tell() == 0
         f.seek(3)
         assert f.read(4) == b'3456'
@@ -327,7 +327,7 @@ def test_full_read(hdfs):
         assert f.tell() == 10
 
 def test_tail_head(hdfs):
-    with hdfs.open(a, 'w') as f:
+    with hdfs.open(a, 'wb') as f:
         f.write(b'0123456789')
 
     assert hdfs.tail(a, 3) == b'789'
@@ -393,7 +393,7 @@ def test_read_delimited_block(hdfs):
     delimiter = b'\n'
     data = delimiter.join([b'123', b'456', b'789'])
 
-    with hdfs.open(fn, 'w') as f:
+    with hdfs.open(fn, 'wb') as f:
         f.write(data)
 
     assert hdfs.read_block(fn, 1, 2) == b'23'
@@ -415,7 +415,7 @@ def test_read_delimited_block(hdfs):
 
 @pytest.mark.parametrize(['lineterminator'], [(b'\n',), (b'--',)])
 def test_readline(hdfs, lineterminator):
-    with hdfs.open(a, 'w') as f:
+    with hdfs.open(a, 'wb') as f:
         f.write(lineterminator.join([b'123', b'456', b'789']))
 
     with hdfs.open(a) as f:
@@ -430,9 +430,9 @@ def read_write(hdfs, i):
     hdfs.df()
     hdfs.du('/', True, True)
     data = b'0' * 10000
-    with hdfs.open('/tmp/test/%d' % i, 'w') as f:
+    with hdfs.open('/tmp/test/%d' % i, 'wb') as f:
         f.write(data)
-    with hdfs.open('/tmp/test/%d' % i, 'r') as f:
+    with hdfs.open('/tmp/test/%d' % i, 'rb') as f:
         data2 = f.read()
     assert data == data2
 
@@ -463,7 +463,7 @@ def test_stress_read_block(hdfs):
     data = b'hello, world!\n' * 10000
 
     for T in (Thread, ctx.Process,):
-        with hdfs.open(a, 'w') as f:
+        with hdfs.open(a, 'wb') as f:
             f.write(data)
 
         threads = [T(target=read_random_block, args=(hdfs, a, len(data), b'\n'))
@@ -523,20 +523,20 @@ def test_touch_exists(hdfs):
 def test_write_in_read_mode(hdfs):
     hdfs.touch(a)
 
-    with hdfs.open(a, 'r') as f:
+    with hdfs.open(a, 'rb') as f:
         with pytest.raises(IOError):
             f.write(b'')
 
 
 def test_readlines(hdfs):
-    with hdfs.open(a, 'w') as f:
+    with hdfs.open(a, 'wb') as f:
         f.write(b'123\n456')
 
-    with hdfs.open(a, 'r') as f:
+    with hdfs.open(a, 'rb') as f:
         lines = f.readlines()
         assert lines == [b'123', b'456']
 
-    with hdfs.open(a, 'w') as f:
+    with hdfs.open(a, 'wb') as f:
         with pytest.raises(IOError):
             f.read()
 
@@ -553,9 +553,9 @@ def test_put(hdfs):
 
 
 def test_getmerge(hdfs):
-    with hdfs.open(a, 'w') as f:
+    with hdfs.open(a, 'wb') as f:
         f.write(b'123')
-    with hdfs.open(b, 'w') as f:
+    with hdfs.open(b, 'wb') as f:
         f.write(b'456')
 
     with tmpfile() as fn:
@@ -569,7 +569,7 @@ def test_getmerge(hdfs):
 def test_get(hdfs):
     data = b'1234567890'
     with tmpfile() as fn:
-        with hdfs.open(a, 'w') as f:
+        with hdfs.open(a, 'wb') as f:
             f.write(data)
 
         hdfs.get(a, fn)
@@ -585,17 +585,17 @@ def test_get(hdfs):
 def test_open_errors(hdfs):
     hdfs.touch(a)
     with pytest.raises(ValueError):
-        hdfs.open(a, 'r', block_size=1000)
+        hdfs.open(a, 'rb', block_size=1000)
 
     hdfs.disconnect()
     with pytest.raises(IOError):
-        hdfs.open(a, 'w')
+        hdfs.open(a, 'wb')
 
 
 def test_du(hdfs):
-    with hdfs.open(a, 'w') as f:
+    with hdfs.open(a, 'wb') as f:
         f.write(b'123')
-    with hdfs.open(b, 'w') as f:
+    with hdfs.open(b, 'wb') as f:
         f.write(b'4567')
 
     assert hdfs.du('/tmp/test') == {a: 3, b: 4}
@@ -603,7 +603,7 @@ def test_du(hdfs):
 
 
 def test_get_block_locations(hdfs):
-    with hdfs.open(a, 'w') as f:
+    with hdfs.open(a, 'wb') as f:
         f.write(b'123')
 
     locs = hdfs.get_block_locations(a)
@@ -618,16 +618,7 @@ def test_chmod(hdfs):
     assert hdfs.ls(a)[0]['permissions'] == 0o500
     hdfs.chmod(a, 0o100)
     with pytest.raises(IOError):
-        hdfs.open(a, 'a')
-
-
-@pytest.mark.xfail
-def test_chmod_write(hdfs):
-    hdfs.chmod(a, 'r')
-    hdfs.chmod(a, 'w')
-
-    with hdfs.open(a, 'a') as f:
-        pass
+        hdfs.open(a, 'ab')
 
 
 @pytest.mark.xfail
@@ -635,3 +626,60 @@ def test_chown(hdfs):
     hdfs.touch(a)
     i = hdfs.info(a)
     hdfs.chown(a, 'root', 'supergroup')
+
+
+def test_text_bytes(hdfs):
+    with pytest.raises(NotImplementedError):
+        hdfs.open(a, 'wt')
+
+    with pytest.raises(NotImplementedError):
+        hdfs.open(a, 'rt')
+
+    try:
+        hdfs.open(a, 'r')
+    except NotImplementedError as e:
+        assert 'rb' in str(e)
+
+    try:
+        hdfs.open(a, 'w')
+    except NotImplementedError as e:
+        assert 'wb' in str(e)
+
+    try:
+        hdfs.open(a, 'a')
+    except NotImplementedError as e:
+        assert 'ab' in str(e)
+
+    with hdfs.open(a, 'wb') as f:
+        f.write(b'123')
+
+    with hdfs.open(a, 'rb') as f:
+        b = f.read()
+
+    assert b == b'123'
+
+
+def test_open_deep_file(hdfs):
+    with pytest.raises(IOError):
+        f = hdfs.open('/tmp/test/a/b/c/d/e/f', 'wb')
+
+
+def test_append(hdfs):
+    with hdfs.open(a, mode='ab', replication=1) as f:
+        f.write(b'123')
+    with hdfs.open(a, mode='ab', replication=1) as f:
+        f.write(b'456')
+
+    with hdfs.open(a, mode='rb') as f:
+        assert f.read() == b'123456'
+
+    with hdfs.open(a, mode='ab', replication=1) as f:
+        f.write(b'789')
+    with hdfs.open(a, mode='rb') as f:
+        assert f.read() == b'123456789'
+
+    with pytest.raises(IOError):
+        with hdfs.open(b, mode='ab', replication=2) as f:
+            f.write(b'123')
+        with hdfs.open(b, mode='ab', replication=2) as f:
+            f.write(b'456')

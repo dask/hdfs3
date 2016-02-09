@@ -26,7 +26,6 @@ API
    HDFileSystem.set_replication
    HDFileSystem.tail
    HDFileSystem.touch
-   HDFileSystem.truncate
 
 .. autosummary::
    HDFile

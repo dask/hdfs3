@@ -18,6 +18,8 @@ forked process.  This happens in some cases when using ``hdfs3`` with
 
         $ pip install locket
 
+    .. code-block:: python
+
         import locket
 
         with locket.lock_file('.lock'):
