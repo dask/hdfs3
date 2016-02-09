@@ -15,10 +15,10 @@ curl http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -o ~/mi
 bash ~/miniconda.sh -b -p $CONDA_DIR
 $CONDA_DIR/bin/conda install conda-build anaconda-client -y
 
-git clone https://github.com/blaze/hdfs3.git ~/hdfs3
+git clone https://github.com/dask/hdfs3.git ~/hdfs3
 cd ~/hdfs3/conda-recipes
 $CONDA_DIR/bin/conda build hdfs3 --python 2.7 --python 3.4 --python 3.5
 
 $CONDA_DIR/bin/anaconda login
-$CONDA_DIR/bin/anaconda upload $CONDA_DIR/conda-bld/linux-64/*.tar.bz2 -u blaze
+$CONDA_DIR/bin/anaconda upload $CONDA_DIR/conda-bld/linux-64/*.tar.bz2 -u dask
 ```

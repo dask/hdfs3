@@ -6,7 +6,7 @@ from setuptools import setup
 setup(name='hdfs3',
       version='0.0.1',
       description='Python wrappers for libhdfs3, a native HDFS client',
-      url='http://github.com/blaze/hdfs3/',
+      url='http://github.com/dask/hdfs3/',
       maintainer='Martin Durant',
       maintainer_email='mdurant@continuum.io',
       license='BSD',
