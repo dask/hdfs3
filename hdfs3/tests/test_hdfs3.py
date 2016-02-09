@@ -662,3 +662,9 @@ def test_append(hdfs):
         f.write(b'789')
     with hdfs.open(a, mode='rb') as f:
         assert f.read() == b'123456789'
+
+    with pytest.raises(IOError):
+        with hdfs.open(b, mode='ab', replication=2) as f:
+            f.write(b'123')
+        with hdfs.open(b, mode='ab', replication=2) as f:
+            f.write(b'456')

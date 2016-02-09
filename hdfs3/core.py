@@ -213,6 +213,10 @@ class HDFileSystem(object):
             raise IOError("Filesystem not connected")
         if block_size and mode != 'wb':
             raise ValueError('Block size only valid when writing new file')
+        if ('a' in mode and self.exists(path) and
+            replication !=0 and replication > 1):
+            raise IOError("Appending to an existing file with replication > 1"
+                    " is unsupported")
         return HDFile(self, path, mode, replication=replication, buff=buff,
                 block_size=block_size)
 
