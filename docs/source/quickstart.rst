@@ -1,12 +1,6 @@
 Quickstart
 ----------
 
-Install ``hdfs3`` and its dependencies:
-
-.. code-block:: bash
-
-   $ conda install hdfs3 -c dask
-
 Import ``hdfs3`` and connect to an HDFS cluster:
 
 .. code-block:: python

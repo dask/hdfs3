@@ -27,11 +27,6 @@ as well as a typical Pythonic interface.
    ...     f.seek(2000)
    ...     bytes = f.read(1000000)
 
-Refer to the following documentation to get started with `hdfs3`:
-
-* :doc:`install`
-* :doc:`quickstart`
-
 
 Motivation
 ----------
