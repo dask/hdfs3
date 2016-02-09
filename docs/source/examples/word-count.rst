@@ -5,9 +5,7 @@ Setup
 -----
 
 In this example, we'll use the `hdfs3` library to count the number of words in
-text files (Enron email dataset, 6.4 GB) stored in HDFS. This example just uses
-a single Python process on one node of the cluster. It does not involve
-distributed computation.
+text files (Enron email dataset, 6.4 GB) stored in HDFS.
 
 Copy data from S3 into HDFS:
 
