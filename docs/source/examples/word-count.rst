@@ -7,13 +7,6 @@ Setup
 In this example, we'll use the `hdfs3` library to count the number of words in
 text files (Enron email dataset, 6.4 GB) stored in HDFS.
 
-Install the `hdfs3` library and its dependencies using the conda package
-manager in `Anaconda <https://www.continuum.io/downloads>`_.
-
-.. code-block:: bash
-
-   $ conda install hdfs3 -c blaze
-
 Copy data from S3 into HDFS:
 
 .. code-block:: bash

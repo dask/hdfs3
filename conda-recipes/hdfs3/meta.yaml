@@ -14,6 +14,6 @@ requirements:
         - libhdfs3
 
 about:
-  home: https://github.com/blaze/hdfs3
+  home: https://github.com/dask/hdfs3
   license: BSD 
   summary: Python wrapper for libhdfs3
