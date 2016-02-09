@@ -217,6 +217,9 @@ class HDFileSystem(object):
             replication !=0 and replication > 1):
             raise IOError("Appending to an existing file with replication > 1"
                     " is unsupported")
+        if 'b' not in mode:
+            raise NotImplementedError("Text mode not supported, use mode='%s'"
+                    " and manage bytes" % (mode + 'b'))
         return HDFile(self, path, mode, replication=replication, buff=buff,
                 block_size=block_size)
 

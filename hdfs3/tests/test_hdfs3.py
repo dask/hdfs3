@@ -635,6 +635,21 @@ def test_text_bytes(hdfs):
     with pytest.raises(NotImplementedError):
         hdfs.open(a, 'rt')
 
+    try:
+        hdfs.open(a, 'r')
+    except NotImplementedError as e:
+        assert 'rb' in str(e)
+
+    try:
+        hdfs.open(a, 'w')
+    except NotImplementedError as e:
+        assert 'wb' in str(e)
+
+    try:
+        hdfs.open(a, 'a')
+    except NotImplementedError as e:
+        assert 'ab' in str(e)
+
     with hdfs.open(a, 'wb') as f:
         f.write(b'123')
 
