@@ -103,7 +103,8 @@ Count the number of words in the first text file:
     (b'any', 206962),
     (b'by', 194780)]
 
-Count the number of words in all of the text files:
+Count the number of words in all of the text files. This operation required
+about 10 minutes to run on a single machine with 4 cores and 16 GB RAM:
 
 .. code-block:: python
 
