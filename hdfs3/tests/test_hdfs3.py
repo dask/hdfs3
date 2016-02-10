@@ -525,7 +525,7 @@ def test_write_in_read_mode(hdfs):
 
     with hdfs.open(a, 'rb') as f:
         with pytest.raises(IOError):
-            f.write(b'')
+            f.write(b'123')
 
 
 def test_readlines(hdfs):
@@ -683,3 +683,25 @@ def test_append(hdfs):
             f.write(b'123')
         with hdfs.open(b, mode='ab', replication=2) as f:
             f.write(b'456')
+
+
+def test_write_empty(hdfs):
+    with hdfs.open(a, mode='wb', replication=1) as f:
+        f.write(b'')
+
+    with hdfs.open(a, mode='rb') as f:
+        assert f.read() == b''
+
+
+def test_gzip(hdfs):
+    import gzip
+    data = b'name,amount\nAlice,100\nBob,200'
+    with hdfs.open(a, mode='wb', replication=1) as f:
+        with gzip.GzipFile(fileobj=f) as g:
+            g.write(b'name,amount\nAlice,100\nBob,200')
+
+    with hdfs.open(a) as f:
+        with gzip.GzipFile(fileobj=f) as g:
+            bytes = g.read()
+
+    assert bytes == data
