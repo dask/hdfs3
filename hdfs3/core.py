@@ -690,6 +690,8 @@ class HDFile(object):
     def write(self, data):
         """ Write bytes to open file (which must be in w or a mode) """
         data = ensure_bytes(data)
+        if not data:
+            return
         if not _lib.hdfsFileIsOpenForWrite(self._handle):
             raise IOError('File not write mode')
         if not _lib.hdfsWrite(self._fs, self._handle, data, len(data)) == len(data):
