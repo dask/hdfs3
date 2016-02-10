@@ -4,8 +4,8 @@ Word count
 Setup
 -----
 
-In this example, we'll use the `hdfs3` library to count the number of words in
-text files (Enron email dataset, 6.4 GB) stored in HDFS.
+In this example, we'll use the ``hdfs3`` library to count the number of words
+in text files (Enron email dataset, 6.4 GB) stored in HDFS.
 
 Copy data from S3 into HDFS:
 
@@ -13,12 +13,12 @@ Copy data from S3 into HDFS:
 
    $ hadoop distcp s3n://{AWS_SECRET_ID}:{AWS_SECRET_KEY}@blaze-data/enron-email hdfs:///tmp/enron
 
-where `AWS_SECRET_ID` and `AWS_SECRET_KEY` are valid AWS credentials.
+where ``AWS_SECRET_ID`` and ``AWS_SECRET_KEY`` are valid AWS credentials.
 
 Code example
 ------------
 
-Import the `hdfs3` library and other standard libraries used in this example:
+Import ``hdfs3`` and other standard libraries used in this example:
 
 .. code-block:: python
 
