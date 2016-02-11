@@ -73,11 +73,11 @@ Create a function to count words in each file:
 .. code-block:: python
 
    >>> def count_words(file):
-   >>>     word_counts = defaultdict(int)
-   >>>     for line in file:
-   >>>         for word in line.split():
-   >>>             word_counts[word] += 1
-   >>>     return word_counts
+   ...     word_counts = defaultdict(int)
+   ...     for line in file:
+   ...         for word in line.split():
+   ...             word_counts[word] += 1
+   ...     return word_counts
 
    >>> print(count_words(['apple banana apple', 'apple orange']))
 
@@ -88,8 +88,7 @@ Count the number of words in the first text file:
 .. code-block:: python
 
    >>> with hdfs.open(filenames[0]) as f:
-   >>>     counts = count_words(f)
-
+   ...     counts = count_words(f)
    >>> print(sorted(counts.items(), key=lambda k_v: k_v[1], reverse=True)[:10])
 
    [(b'the', 1065320),
@@ -110,9 +109,9 @@ about 10 minutes to run on a single machine with 4 cores and 16 GB RAM:
 
    >>> all_counts = Counter()
    >>> for fn in filenames:
-   >>>     with hdfs.open(fn) as f:
-   >>>         counts = count_words(f)
-   >>>         all_counts.update(counts)
+   ...     with hdfs.open(fn) as f:
+   ...         counts = count_words(f)
+   ...         all_counts.update(counts)
 
 Print the total number of words and the words with the highest frequency from
 all of the text files:
