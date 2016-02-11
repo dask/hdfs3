@@ -23,18 +23,13 @@ as well as a typical Pythonic interface.
    >>> hdfs.put('local-file.txt', '/user/data/remote-file.txt')
    >>> hdfs.cp('/user/data/file.txt', '/user2/data')
 
-The Python ``hdfs3`` library exposes a Python compliant file interface,
-suitable for use with other Python libraries.
+HDFS3 files comply with the Python File interface. This enables interactions
+with the broader ecosystem of PyData projects.
 
 .. code-block:: python
 
    >>> with hdfs.open('/user/data/file.txt') as f:
    ...     data = f.read(1000000)
-
-Because this follows the standard Pythonic file interface, ``hdfs3`` interacts
-smoothly with the rest of the Python ecosystem.
-
-.. code-block:: python
 
    >>> with hdfs.open('/user/data/file.csv.gz') as f:
    ...     df = pandas.read_csv(f, compression='gzip', nrows=1000)
