@@ -89,6 +89,7 @@ Count the number of words in the first text file:
 
    >>> with hdfs.open(filenames[0]) as f:
    ...     counts = count_words(f)
+   
    >>> print(sorted(counts.items(), key=lambda k_v: k_v[1], reverse=True)[:10])
 
    [(b'the', 1065320),
