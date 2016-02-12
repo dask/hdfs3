@@ -1,6 +1,6 @@
 name: hdfs3-docs
 channels:
-    - blaze
+    - dask
 dependencies:
     - python
     - hdfs3

@@ -126,16 +126,12 @@ class HDFileSystem(object):
         """
         Parameters
         ----------
-
         host : str (default from config files)
             namenode (name or IP)
-
         port : int (9000)
             connection port
-
         user, ticket_cache, token : str
             kerberos things
-
         pars : {str: str}
             other parameters for hadoop
         """
@@ -199,7 +195,7 @@ class HDFileSystem(object):
             _lib.hdfsDisconnect(self._handle)
         self._handle = None
 
-    def open(self, path, mode='r', repl=0, buff=0, block_size=0):
+    def open(self, path, mode='rb', replication=0, buff=0, block_size=0):
         """ Open a file for reading or writing
 
         Parameters
@@ -207,17 +203,24 @@ class HDFileSystem(object):
         path: string
             Path of file on HDFS
         mode: string
-            One of 'r', 'w', or 'a'
-        repl: int
+            One of 'rb', 'wb', or 'ab'
+        replication: int
             Replication factor; if zero, use system default (only on write)
         block_size: int
             Size of data-node blocks if writing
         """
         if not self._handle:
             raise IOError("Filesystem not connected")
-        if block_size and mode != 'w':
+        if block_size and mode != 'wb':
             raise ValueError('Block size only valid when writing new file')
-        return HDFile(self, path, mode, repl=repl, buff=buff,
+        if ('a' in mode and self.exists(path) and
+            replication !=0 and replication > 1):
+            raise IOError("Appending to an existing file with replication > 1"
+                    " is unsupported")
+        if 'b' not in mode:
+            raise NotImplementedError("Text mode not supported, use mode='%s'"
+                    " and manage bytes" % (mode + 'b'))
+        return HDFile(self, path, mode, replication=replication, buff=buff,
                 block_size=block_size)
 
     def du(self, path, total=False, deep=False):
@@ -392,7 +395,6 @@ class HDFileSystem(object):
         ----------
         path : string
             file/directory to change
-
         mode : integer
             As with the POSIX standard, each octal digit refers to
             user-group-all, in that order, with read-write-execute as the
@@ -423,7 +425,7 @@ class HDFileSystem(object):
         """ Return contents of file """
         if not self.exists(path):
             raise FileNotFoundError(path)
-        with self.open(path, 'r') as f:
+        with self.open(path, 'rb') as f:
             result = f.read()
         return result
 
@@ -432,7 +434,7 @@ class HDFileSystem(object):
         #TODO: _lib.hdfsCopy() may do this more efficiently
         if not self.exists(hdfs_path):
             raise FileNotFoundError(hdfs_path)
-        with self.open(hdfs_path, 'r') as f:
+        with self.open(hdfs_path, 'rb') as f:
             with open(local_path, 'wb') as f2:
                 out = 1
                 while out:
@@ -444,7 +446,7 @@ class HDFileSystem(object):
         files = self.ls(path)
         with open(filename, 'wb') as f2:
             for apath in files:
-                with self.open(apath['name'], 'r') as f:
+                with self.open(apath['name'], 'rb') as f:
                     out = 1
                     while out:
                         out = f.read(blocksize)
@@ -452,7 +454,7 @@ class HDFileSystem(object):
 
     def put(self, filename, path, chunk=2**16):
         """ Copy local file to path in HDFS """
-        with self.open(path, 'w') as f:
+        with self.open(path, 'wb') as f:
             with open(filename, 'rb') as f2:
                 while True:
                     out = f2.read(chunk)
@@ -465,18 +467,18 @@ class HDFileSystem(object):
         length = self.du(path)[ensure_trailing_slash(path)]
         if size > length:
             return self.cat(path)
-        with self.open(path, 'r') as f:
+        with self.open(path, 'rb') as f:
             f.seek(length - size)
             return f.read(size)
 
     def head(self, path, size=1024):
         """ Return first bytes of file """
-        with self.open(path, 'r') as f:
+        with self.open(path, 'rb') as f:
             return f.read(size)
 
     def touch(self, path):
         """ Create zero-length file """
-        self.open(path, 'w').close()
+        self.open(path, 'wb').close()
 
     def read_block(self, fn, offset, length, delimiter=None):
         """ Read a block of bytes from an HDFS file
@@ -511,7 +513,7 @@ class HDFileSystem(object):
         --------
         hdfs3.utils.read_block
         """
-        with self.open(fn, 'r') as f:
+        with self.open(fn, 'rb') as f:
             size = f.info()['size']
             if offset + length > size:
                 length = size - offset
@@ -531,15 +533,28 @@ def info_to_dict(s):
     return d
 
 
-mode_numbers = {'w': 1, 'r': 0, 'a': 5121}
+mode_numbers = {'w': 1, 'r': 0, 'a': 1025,
+                'wb': 1, 'rb': 0, 'ab': 1025}
 
 class HDFile(object):
-    """ File on HDFS """
-    def __init__(self, fs, path, mode, repl=0, buff=0, block_size=0):
+    """ File on HDFS
+
+    Matches the standard Python file interface.
+
+    Examples
+    --------
+    >>> with hdfs.open('/path/to/hdfs/file.txt') as f:  # doctest: +SKIP
+    ...     bytes = f.read(1000)  # doctest: +SKIP
+    >>> with hdfs.open('/path/to/hdfs/file.csv') as f:  # doctest: +SKIP
+    ...     df = pd.read_csv(f, nrows=1000)  # doctest: +SKIP
+    """
+    def __init__(self, fs, path, mode, replication=0, buff=0, block_size=0):
         """ Called by open on a HDFileSystem """
+        if 't' in mode:
+            raise NotImplementedError("Opening a file in text mode is not yet supported")
         self.fs = fs
         self.path = path
-        self.repl = repl
+        self.replication = replication
         self.buff = buff
         self._fs = fs._handle
         self.buffer = b''
@@ -550,8 +565,9 @@ class HDFile(object):
 
     def _set_handle(self):
         out = _lib.hdfsOpenFile(self._fs, ensure_bytes(self.path),
-                mode_numbers[self.mode], self.buff,
-                            ctypes.c_short(self.repl), ctypes.c_int64(self.block_size))
+                                mode_numbers[self.mode], self.buff,
+                                ctypes.c_short(self.replication),
+                                ctypes.c_int64(self.block_size))
         if not out:
             raise IOError("Could not open file: %s, mode: %s" %
                           (self.path, self.mode))
@@ -674,6 +690,8 @@ class HDFile(object):
     def write(self, data):
         """ Write bytes to open file (which must be in w or a mode) """
         data = ensure_bytes(data)
+        if not data:
+            return
         if not _lib.hdfsFileIsOpenForWrite(self._handle):
             raise IOError('File not write mode')
         if not _lib.hdfsWrite(self._fs, self._handle, data, len(data)) == len(data):

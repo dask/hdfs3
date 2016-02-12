@@ -9,7 +9,7 @@ engine:
   - python=3.5
 
 install:
-  - conda config --add channels blaze
+  - conda config --add channels dask
 
 before_script:
   - conda info

@@ -10,5 +10,5 @@ View the documentation_ for hdfs3.
 .. _libhdfs3: https://github.com/PivotalRD/libhdfs3
 .. _documentation: http://hdfs3.readthedocs.org/en/latest/
 
-.. |Build Status| image:: https://travis-ci.org/blaze/hdfs3.svg?branch=master
-    :target: https://travis-ci.org/blaze/hdfs3
+.. |Build Status| image:: https://travis-ci.org/dask/hdfs3.svg?branch=master
+    :target: https://travis-ci.org/dask/hdfs3

@@ -4,15 +4,8 @@ Word count
 Setup
 -----
 
-In this example, we'll use the `hdfs3` library to count the number of words in
-text files (Enron email dataset, 6.4 GB) stored in HDFS.
-
-Install the `hdfs3` library and its dependencies using the conda package
-manager in `Anaconda <https://www.continuum.io/downloads>`_.
-
-.. code-block:: bash
-
-   $ conda install hdfs3 -c blaze
+In this example, we'll use the ``hdfs3`` library to count the number of words
+in text files (Enron email dataset, 6.4 GB) stored in HDFS.
 
 Copy data from S3 into HDFS:
 
@@ -20,18 +13,17 @@ Copy data from S3 into HDFS:
 
    $ hadoop distcp s3n://{AWS_SECRET_ID}:{AWS_SECRET_KEY}@blaze-data/enron-email hdfs:///tmp/enron
 
-where `AWS_SECRET_ID` and `AWS_SECRET_KEY` are valid AWS credentials.
+where ``AWS_SECRET_ID`` and ``AWS_SECRET_KEY`` are valid AWS credentials.
 
 Code example
 ------------
 
-Import the `hdfs3` library and other libraries used in this example:
+Import ``hdfs3`` and other standard libraries used in this example:
 
 .. code-block:: python
 
    >>> import hdfs3
    >>> from collections import defaultdict, Counter
-   >>> from toolz import topk
 
 Initalize a connection to HDFS, replacing ``NAMENODE_HOSTNAME`` and
 ``NAMENODE_PORT`` with the hostname and port (default: 8020) of the HDFS
@@ -81,11 +73,11 @@ Create a function to count words in each file:
 .. code-block:: python
 
    >>> def count_words(file):
-   >>>     word_counts = defaultdict(int)
-   >>>     for line in file:
-   >>>         for word in line.split():
-   >>>             word_counts[word] += 1
-   >>>     return word_counts
+   ...     word_counts = defaultdict(int)
+   ...     for line in file:
+   ...         for word in line.split():
+   ...             word_counts[word] += 1
+   ...     return word_counts
 
    >>> print(count_words(['apple banana apple', 'apple orange']))
 
@@ -96,11 +88,11 @@ Count the number of words in the first text file:
 .. code-block:: python
 
    >>> with hdfs.open(filenames[0]) as f:
-   >>>     counts = count_words(f)
+   ...     counts = count_words(f)
+   
+   >>> print(sorted(counts.items(), key=lambda k_v: k_v[1], reverse=True)[:10])
 
-   >>> print(topk(10, counts.items(), key=lambda k_v: k_v[1]))
-
-   ((b'the', 1065320),
+   [(b'the', 1065320),
     (b'of', 657220),
     (b'to', 569076),
     (b'and', 545821),
@@ -109,17 +101,18 @@ Count the number of words in the first text file:
     (b'shall', 255680),
     (b'be', 210976),
     (b'any', 206962),
-    (b'by', 194780))
+    (b'by', 194780)]
 
-Count the number of words in all of the text files:
+Count the number of words in all of the text files. This operation required
+about 10 minutes to run on a single machine with 4 cores and 16 GB RAM:
 
 .. code-block:: python
 
    >>> all_counts = Counter()
    >>> for fn in filenames:
-   >>>     with hdfs.open(fn) as f:
-   >>>         counts = count_words(f)
-   >>>         all_counts.update(counts)
+   ...     with hdfs.open(fn) as f:
+   ...         counts = count_words(f)
+   ...         all_counts.update(counts)
 
 Print the total number of words and the words with the highest frequency from
 all of the text files:
@@ -130,9 +123,9 @@ all of the text files:
 
    8797842
 
-   >>> print(topk(10, all_counts.items(), key=lambda k_v: k_v[1]))
+   >>> print(sorted(all_counts.items(), key=lambda k_v: k_v[1], reverse=True)[:10])
 
-   ((b'0', 67218380),
+   [(b'0', 67218380),
     (b'the', 19586868),
     (b'-', 14123768),
     (b'to', 11893464),
@@ -141,4 +134,44 @@ all of the text files:
     (b'and', 10253753),
     (b'in', 6684937),
     (b'a', 5470371),
-    (b'or', 5227805))
+    (b'or', 5227805)]
+
+The complete Python script for this example is shown below:
+
+.. code-block:: python
+
+   # word-count.py   
+   
+   import hdfs3
+   from collections import defaultdict, Counter
+
+   hdfs = hdfs3.HDFileSystem('NAMENODE_HOSTNAME', port=NAMENODE_PORT)
+   
+   filenames = hdfs.glob('/tmp/enron/*/*')
+   print(filenames[:5])
+   print(hdfs.head(filenames[0]))
+   
+   
+   def count_words(file):
+       word_counts = defaultdict(int)
+       for line in file:
+           for word in line.split():
+               word_counts[word] += 1
+       return word_counts
+   
+   print(count_words(['apple banana apple', 'apple orange']))
+   
+   with hdfs.open(filenames[0]) as f:
+       counts = count_words(f)
+   
+   print(sorted(counts.items(), key=lambda k_v: k_v[1], reverse=True)[:10])
+   
+   all_counts = Counter()
+   
+   for fn in filenames:
+       with hdfs.open(fn) as f:
+           counts = count_words(f)
+           all_counts.update(counts)
+   
+   print(len(all_counts))
+   print(sorted(all_counts.items(), key=lambda k_v: k_v[1], reverse=True)[:10])
