@@ -531,7 +531,7 @@ def info_to_dict(s):
     return d
 
 
-mode_numbers = {'w': 1, 'r': 0, 'a': 1025}
+mode_numbers = {'w': 1, 'r': 0, 'a': 5121}
 
 class HDFile(object):
     """ File on HDFS """
