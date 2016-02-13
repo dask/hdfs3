@@ -2,7 +2,7 @@ from __future__ import print_function
 import os
 import sys
 import stat
-from errno import ENOENT, EROFS
+from errno import ENOENT, EIO
 from fuse import FUSE, Operations, FuseOSError
 from hdfs3 import HDFileSystem
 from hdfs3.core import FileNotFoundError
@@ -52,22 +52,50 @@ class HDFS(Operations):
                               for l in self.hdfs.ls(path)]
 
     def mkdir(self, path, mode):
-        print(path, file=open(os.path.expanduser("~")+'/log', 'a'))
         self.hdfs.mkdir(path)
 
     def rmdir(self, path):
         self.hdfs.rm(path, False)
 
     def read(self, path, size, offset, fh):
-        with self.hdfs.open(path, 'rb') as f:
-            f.seek(offset)
-            return f.read(size)
+        if offset == 0:
+            with self.hdfs.open(path, 'rb') as f:
+                f.seek(offset)
+                return f.read(size)
+
+    def write(self, path, data, offset, fh):
+        if offset == 0:
+            with self.hdfs.open(path, 'wb') as f:
+                f.write(data)
+                return len(data)
+
+    def create(self, path, flags):
+        self.hdfs.touch(path)
+        return 0
+
+    def open(self, path, flags):
+        if flags % 2 == 0:
+            return 0
+        return 1
+
+    def truncate(self, path, length, fh=None):
+        if length == 0:
+            self.hdfs.open(path, 'wb')
+
+    def unlink(self, path):
+        try:
+            self.hdfs.rm(path, False)
+        except (IOError, FileNotFoundError):
+            raise FuseOSError(EIO)
+
+    def release(self, path, fh):
+        return 0
 
     def chmod(self, path, mode):
         try:
             self.hdfs.chmod(path, mode)
-        except IOError, FileNotFoundError:
-            raise FuseOSError(EROFS)
+        except (IOError, FileNotFoundError):
+            raise FuseOSError(EIO)
 
 
 def main(mountpofloat, root):
