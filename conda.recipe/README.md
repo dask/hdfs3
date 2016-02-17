@@ -17,7 +17,7 @@ $CONDA_DIR/bin/conda install conda-build anaconda-client -y
 
 git clone https://github.com/dask/hdfs3.git ~/hdfs3
 cd ~/hdfs3/conda.recipe
-$CONDA_DIR/bin/conda build hdfs3 --python 2.6 --python 2.7 --python 3.4 --python 3.5
+$CONDA_DIR/bin/conda build hdfs3 --python 2.7 --python 3.4 --python 3.5
 
 $CONDA_DIR/bin/anaconda login
 $CONDA_DIR/bin/anaconda upload $CONDA_DIR/conda-bld/linux-64/*.tar.bz2 -u dask
