@@ -45,6 +45,12 @@ def test_simple(hdfs):
         assert len(data) == len(out)
         assert out == data
 
+def test_connection_error():
+    with pytest.raises(RuntimeError) as ctx:
+        hdfs = HDFileSystem(host='localhost', port=9999, connect=False)
+        hdfs.connect()
+    msg = ''
+    assert str(ctx.value) == msg
 
 def test_idempotent_connect(hdfs):
     hdfs.connect()
@@ -657,9 +663,10 @@ def test_text_bytes(hdfs):
 
 
 def test_open_deep_file(hdfs):
-    with pytest.raises(IOError):
-        f = hdfs.open('/tmp/test/a/b/c/d/e/f', 'wb')
-
+    with pytest.raises(IOError) as ctx:
+        hdfs.open('/tmp/test/a/b/c/d/e/f', 'wb')
+    msg = ''
+    assert str(ctx.value) == msg
 
 def test_append(hdfs):
     with hdfs.open(a, mode='ab', replication=1) as f:
