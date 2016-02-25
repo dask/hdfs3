@@ -49,8 +49,10 @@ def test_connection_error():
     with pytest.raises(RuntimeError) as ctx:
         hdfs = HDFileSystem(host='localhost', port=9999, connect=False)
         hdfs.connect()
-    msg = ''
-    assert str(ctx.value) == msg
+    # error message is long and with java exceptions, so here we just check
+    # that important part of error is present
+    msg = 'Caused by: HdfsNetworkConnectException: Connect to "localhost:9999"'
+    assert msg in str(ctx.value)
 
 def test_idempotent_connect(hdfs):
     hdfs.connect()
@@ -665,8 +667,9 @@ def test_text_bytes(hdfs):
 def test_open_deep_file(hdfs):
     with pytest.raises(IOError) as ctx:
         hdfs.open('/tmp/test/a/b/c/d/e/f', 'wb')
-    msg = ''
-    assert str(ctx.value) == msg
+    msg = "Could not open file: /tmp/test/a/b/c/d/e/f, mode: wb " \
+          "Parent directory doesn't exist"
+    assert msg in str(ctx.value)
 
 def test_append(hdfs):
     with hdfs.open(a, mode='ab', replication=1) as f:
