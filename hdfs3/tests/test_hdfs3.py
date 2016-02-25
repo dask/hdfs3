@@ -1,20 +1,17 @@
 from __future__ import unicode_literals
 
-import ctypes
 import multiprocessing
-from multiprocessing import Process, Queue
 import os
 import tempfile
 import sys
 from random import randint
 from threading import Thread
-import threading
 
 import pytest
 
 from hdfs3 import HDFileSystem, lib
 from hdfs3.core import conf_to_dict, ensure_bytes, ensure_string
-from hdfs3.compatibility import PermissionError, bytes, unicode
+from hdfs3.compatibility import bytes, unicode
 from hdfs3.utils import tmpfile
 
 
