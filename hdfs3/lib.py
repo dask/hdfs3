@@ -6,9 +6,16 @@ Low-level interface to libhdfs3
 import sys
 import ctypes as ct
 
+
 PY3 = sys.version_info.major > 2
 
-_lib = ct.cdll.LoadLibrary('libhdfs3.so')
+
+try:
+    _lib = ct.cdll.LoadLibrary('libhdfs3.so')
+except OSError:
+    raise ImportError("Can not find the shared library: libhdfs3.so\n"
+            "See installation instructions at "
+            "http://hdfs3.readthedocs.org/en/latest/install.html")
 
 
 tSize = ct.c_int32
