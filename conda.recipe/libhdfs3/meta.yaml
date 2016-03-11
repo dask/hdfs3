@@ -10,13 +10,13 @@ requirements:
         - libprotobuf
         - libgsasl
         - libntlm
-        - boost
+        - boost ==1.60
         - cmake
     run:
         - libprotobuf
         - libgsasl
         - libntlm
-        - boost
+        - boost ==1.60
 
 about:
   home: https://github.com/PivotalRD/libhdfs3
