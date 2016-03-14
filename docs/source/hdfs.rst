@@ -39,9 +39,10 @@ following two steps:
     </property>
   </configuration>
 
-Note that you might get HDFS warnings similar to ``retry the same node but
-disable read shortcircuit feature`` without the above two configuration
-changes, but the reads should still function.
+The above configuration changes should allow for short-circuit reads. If you
+continue to receive warnings to ``retry the same node but disable read
+shortcircuit feature``, check the above settings. Note that the HDFS reads
+should still function despite the warning, but performance might be impacted.
 
 For more information about configuring short-circuit reads, refer to the
 `HDFS Short-Circuit Local Reads`_ documentation.
