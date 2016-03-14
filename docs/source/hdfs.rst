@@ -20,7 +20,7 @@ HDFS and ``hdfs3`` can be configured for short-circuit reads using the
 following two steps:
 
 * Set the ``LIBHDFS3_CONF`` environment variable to the location of the
-  hdfs-site.xml configuration file (e.g.,
+  ``hdfs-site.xml`` configuration file (e.g.,
   ``export LIBHDFS3_CONF=/etc/hadoop/conf/hdfs-site.xml``).
 
 * Configure the appropriate settings in ``hdfs-site.xml`` on all of the HDFS nodes:
