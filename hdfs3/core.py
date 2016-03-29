@@ -5,7 +5,6 @@ from __future__ import absolute_import
 import ctypes
 import logging
 import os
-import subprocess
 import sys
 import re
 import warnings
@@ -13,8 +12,8 @@ from .lib import _lib
 
 PY3 = sys.version_info.major > 2
 
-from .compatibility import FileNotFoundError, PermissionError, urlparse
-from .utils import seek_delimiter, read_block
+from .compatibility import FileNotFoundError,  urlparse, ConnectionError
+from .utils import read_block
 
 
 logger = logging.getLogger(__name__)
@@ -186,7 +185,7 @@ class HDFileSystem(object):
             #                                             ensure_bytes(self.user))
         else:
             msg = ensure_string(_lib.hdfsGetLastError())
-            raise RuntimeError('Connection Failed: {}'.format(msg))
+            raise ConnectionError('Connection Failed: {}'.format(msg))
 
     def disconnect(self):
         """ Disconnect from name node """

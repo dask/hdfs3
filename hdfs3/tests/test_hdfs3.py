@@ -11,7 +11,7 @@ import pytest
 
 from hdfs3 import HDFileSystem, lib
 from hdfs3.core import conf_to_dict, ensure_bytes, ensure_string
-from hdfs3.compatibility import bytes, unicode
+from hdfs3.compatibility import bytes, unicode, ConnectionError
 from hdfs3.utils import tmpfile
 
 
@@ -46,7 +46,7 @@ def test_simple(hdfs):
         assert out == data
 
 def test_connection_error():
-    with pytest.raises(RuntimeError) as ctx:
+    with pytest.raises(ConnectionError) as ctx:
         hdfs = HDFileSystem(host='localhost', port=9999, connect=False)
         hdfs.connect()
     # error message is long and with java exceptions, so here we just check
