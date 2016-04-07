@@ -702,9 +702,13 @@ class HDFile(object):
         if not _lib.hdfsFileIsOpenForWrite(self._handle):
             msg = ensure_string(_lib.hdfsGetLastError())
             raise IOError('File not write mode: {}'.format(msg))
-        if not _lib.hdfsWrite(self._fs, self._handle, data, len(data)) == len(data):
-            msg = ensure_string(_lib.hdfsGetLastError())
-            raise IOError('Write failed on file %s' % (self.path, msg))
+        write_block = 64 * 2**20
+        for offset in range(0, len(data), write_block):
+            d = data[offset:offset + write_block]
+            if not _lib.hdfsWrite(self._fs, self._handle, d, len(d)) == len(d):
+                msg = ensure_string(_lib.hdfsGetLastError())
+                raise IOError('Write failed on file %s' % (self.path, msg))
+        return len(data)
 
     def flush(self):
         """ Send buffer to the data-node; actual write to disc may happen later """

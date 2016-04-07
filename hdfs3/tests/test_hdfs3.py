@@ -159,6 +159,16 @@ def test_write_blocksize(hdfs):
         hdfs.open(a, 'rb', block_size=123)
 
 
+@pytest.mark.slow
+def test_write_vbig(hdfs):
+    with hdfs.open(a, 'wb') as f:
+        f.write(b' ' * 2**31)
+    assert hdfs.info(a)['size'] == 2**31
+    with hdfs.open(a, 'wb') as f:
+        f.write(b' ' * (2**31 + 1))
+    assert hdfs.info(a)['size'] == 2**31 + 1
+
+
 def test_replication(hdfs):
     path = '/tmp/test/afile'
     hdfs.open(path, 'wb', replication=0).close()
