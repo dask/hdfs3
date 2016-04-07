@@ -159,6 +159,7 @@ def test_write_blocksize(hdfs):
         hdfs.open(a, 'rb', block_size=123)
 
 
+@pytest.mark.slow
 def test_write_vbig(hdfs):
     with hdfs.open(a, 'wb') as f:
         f.write(b' ' * 2**31)
