@@ -707,7 +707,7 @@ class HDFile(object):
             d = data[offset:offset + write_block]
             if not _lib.hdfsWrite(self._fs, self._handle, d, len(d)) == len(d):
                 msg = ensure_string(_lib.hdfsGetLastError())
-                raise IOError('Write failed on file %s' % (self.path, msg))
+                raise IOError('Write failed on file %s, %s' % (self.path, msg))
         return len(data)
 
     def flush(self):
