@@ -1,24 +1,26 @@
 
 from collections import MutableMapping
 
+
 class HDFSMap(MutableMapping):
-    """Wrap an S3FileSystem as a mutable wrapping.
+    """Wrap a HDFileSystem as a mutable mapping.
 
     The keys of the mapping become files under the given root, and the
     values (which must be bytes) the contents of those files.
 
     Parameters
     ----------
-    s3 : S3FileSystem
+    hdfs : HDFileSystem
     root : string
-        prefix for all the files (perhaps justa  bucket name
+        path to contain the stored files (directory will be created if it
+        doesn't exist)
     check : bool (=True)
         performs a touch at the location, to check writeability.
 
     Examples
     --------
-    >>> s3 = hdfs3.HDFileSystem() # doctest: +SKIP
-    >>> mw = HDFSMap(s3, '/mapstore/') # doctest: +SKIP
+    >>> hdfs = hdfs3.HDFileSystem() # doctest: +SKIP
+    >>> mw = HDFSMap(hdfs, '/writable/path/') # doctest: +SKIP
     >>> mw['loc1'] = b'Hello World' # doctest: +SKIP
     >>> list(mw.keys()) # doctest: +SKIP
     ['loc1']
