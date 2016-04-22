@@ -50,3 +50,13 @@ def test_complex_keys(hdfs):
     print(list(mw))
 
     assert ('x', 1, 2) in mw
+
+
+def test_pickle(hdfs):
+    d = HDFSMap(hdfs, root)
+    d['x'] = b'1'
+
+    import pickle
+    d2 = pickle.loads(pickle.dumps(d))
+
+    assert d2['x'] == b'1'
