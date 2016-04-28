@@ -68,4 +68,4 @@ Related Work
 
 .. _`Hadoop File System`: https://en.wikipedia.org/wiki/Apache_Hadoop
 .. _libhdfs3: http://pivotalrd.github.io/libhdfs3/
-.. _snakebite: http://snakebite.readthedocs.org/en/latest/
+.. _snakebite: http://snakebite.readthedocs.io/en/latest/
