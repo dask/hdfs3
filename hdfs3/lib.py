@@ -15,7 +15,7 @@ try:
 except OSError:
     raise ImportError("Can not find the shared library: libhdfs3.so\n"
             "See installation instructions at "
-            "http://hdfs3.readthedocs.org/en/latest/install.html")
+            "http://hdfs3.readthedocs.io/en/latest/install.html")
 
 
 tSize = ct.c_int32
