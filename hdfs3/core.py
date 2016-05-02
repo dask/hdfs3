@@ -12,7 +12,7 @@ from .lib import _lib
 
 PY3 = sys.version_info.major > 2
 
-from .compatibility import FileNotFoundError,  urlparse, ConnectionError
+from .compatibility import FileNotFoundError, urlparse, ConnectionError
 from .utils import read_block
 
 
@@ -720,6 +720,18 @@ class HDFile(object):
         _lib.hdfsCloseFile(self._fs, self._handle)
         self._handle = None  # _libhdfs releases memory
         self.mode = 'closed'
+
+    def closed(self):
+        return self.mode == 'closed'
+
+    def writable(self):
+        return self.mode.startswith('w') or self.mode.startswith('a')
+
+    def seekable(self):
+        return self.readable()
+
+    def readable(self):
+        return self.mode.startswith('r')
 
     def __del__(self):
         self.close()
