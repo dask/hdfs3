@@ -434,11 +434,10 @@ def test_readline(hdfs, lineterminator):
         f.write(lineterminator.join([b'123', b'456', b'789']))
 
     with hdfs.open(a) as f:
-        assert f.readline(lineterminator=lineterminator) == b'123'
-        assert f.readline(lineterminator=lineterminator) == b'456'
+        assert f.readline(lineterminator=lineterminator) == b'123'+lineterminator
+        assert f.readline(lineterminator=lineterminator) == b'456'+lineterminator
         assert f.readline(lineterminator=lineterminator) == b'789'
-        with pytest.raises(EOFError):
-            f.readline()
+        assert f.readline(lineterminator=lineterminator) == b''
 
 
 def read_write(hdfs, i):
@@ -549,11 +548,21 @@ def test_readlines(hdfs):
 
     with hdfs.open(a, 'rb') as f:
         lines = f.readlines()
-        assert lines == [b'123', b'456']
+        assert lines == [b'123\n', b'456']
+
+    with hdfs.open(a, 'rb') as f:
+        assert list(f) == lines
 
     with hdfs.open(a, 'wb') as f:
         with pytest.raises(IOError):
             f.read()
+
+    bigdata = [b'fe', b'fi', b'fo'] * 32000
+    with hdfs.open(a, 'wb') as f:
+        f.write(b'\n'.join(bigdata))
+    with hdfs.open(a, 'rb') as f:
+        lines = list(f)
+    assert all(l in [b'fe\n', b'fi\n', b'fo', b'fo\n'] for l in lines)
 
 
 def test_put(hdfs):
