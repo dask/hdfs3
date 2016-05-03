@@ -1,11 +1,11 @@
 package: hdfs3
-user: hdfs3
 
 platform:
   - linux-64
 
 engine:
   - python=2.7
+  - python=3.4
   - python=3.5
 
 install:
@@ -16,9 +16,8 @@ before_script:
   - python -V
 
 script:
-  - conda build conda-recipes/hdfs3
+  - conda build conda.recipe/hdfs3
 
 build_targets: conda
 
 iotimeout: 600
-
