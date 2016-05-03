@@ -566,6 +566,7 @@ class HDFile(object):
         self._handle = None
         self.mode = mode
         self.block_size = block_size
+        self.lines = deque([])
         self._set_handle()
 
     def _set_handle(self):
@@ -621,8 +622,7 @@ class HDFile(object):
         Line iteration uses this method internally.
         """
         lineterminator = ensure_bytes(lineterminator)
-        lines = getattr(self, 'lines', deque([]))
-        if len(lines) < 2:
+        if len(self.lines) < 2:
             buffers = []
             while True:
                 out = self.read(chunksize)
@@ -630,10 +630,11 @@ class HDFile(object):
                 if lineterminator in out:
                     break
                 if not out:
-                    remains = list(lines)
+                    remains = list(self.lines)
                     self.lines = deque([])
                     return b''.join(remains + buffers)
-            self.lines = deque(b''.join(list(lines) + buffers).split(lineterminator))
+            self.lines = deque(b''.join(list(self.lines) +
+                                        buffers).split(lineterminator))
         return self.lines.popleft() + lineterminator
 
     def _genline(self):
