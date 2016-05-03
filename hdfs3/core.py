@@ -8,6 +8,7 @@ import os
 import sys
 import re
 import warnings
+from collections import deque
 from .lib import _lib
 
 PY3 = sys.version_info.major > 2
@@ -561,7 +562,7 @@ class HDFile(object):
         self.replication = replication
         self.buff = buff
         self._fs = fs._handle
-        self.buffer = b''
+        self.buffers = []
         self._handle = None
         self.mode = mode
         self.block_size = block_size
@@ -620,24 +621,27 @@ class HDFile(object):
         Line iteration uses this method internally.
         """
         lineterminator = ensure_bytes(lineterminator)
-        lines = getattr(self, 'lines', [])
-        if len(lines) < 1:
-            buff = self.read(chunksize)
-            if len(buff) == 0:   #EOF
-                remains = self.buffer
-                if remains:
-                    self.buffer = b''
-                    return remains
-                raise EOFError
-            buff = (self.buffer + buff)
-            self.lines = buff.split(lineterminator)
-        return self.lines.pop(0)
+        lines = getattr(self, 'lines', deque([]))
+        if len(lines) < 2:
+            buffers = []
+            while True:
+                out = self.read(chunksize)
+                buffers.append(out)
+                if lineterminator in out:
+                    break
+                if not out:
+                    remains = list(lines)
+                    self.lines = deque([])
+                    return b''.join(remains + buffers)
+            self.lines = deque(b''.join(list(lines) + buffers).split(lineterminator))
+        return self.lines.popleft() + lineterminator
 
     def _genline(self):
         while True:
-            try:
-                yield self.readline()
-            except EOFError:
+            out = self.readline()
+            if out:
+                yield out
+            else:
                 raise StopIteration
 
     def __iter__(self):
