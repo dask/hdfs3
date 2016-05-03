@@ -2,6 +2,9 @@ package:
     name: hdfs3
     version: 0.1.1
 
+build:
+    number: {{ environ.get('BINSTAR_BUILD', '1').split('.')[0] }}
+
 source:
     path: ../..
 
