@@ -437,7 +437,7 @@ def test_readline(hdfs, lineterminator):
         assert f.readline(lineterminator=lineterminator) == b'123'+lineterminator
         assert f.readline(lineterminator=lineterminator) == b'456'+lineterminator
         assert f.readline(lineterminator=lineterminator) == b'789'
-        assert f.readline(lineterminator=lineterminator) == ''
+        assert f.readline(lineterminator=lineterminator) == b''
 
 
 def read_write(hdfs, i):
