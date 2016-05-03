@@ -648,7 +648,7 @@ def test_chmod(hdfs):
 @pytest.mark.xfail
 def test_chown(hdfs):
     hdfs.touch(a)
-    i = hdfs.info(a)
+    hdfs.info(a)
     hdfs.chown(a, 'root', 'supergroup')
 
 
@@ -731,3 +731,26 @@ def test_gzip(hdfs):
             bytes = g.read()
 
     assert bytes == data
+
+
+def test_fooable(hdfs):
+    hdfs.touch(a)
+
+    with hdfs.open(a, mode='rb', replication=1) as f:
+        assert f.readable()
+        assert f.seekable()
+        assert not f.writable()
+
+    with hdfs.open(a, mode='wb', replication=1) as f:
+        assert not f.readable()
+        assert not f.seekable()
+        assert f.writable()
+
+
+def test_closed(hdfs):
+    hdfs.touch(a)
+
+    f = hdfs.open(a, mode='rb', replication=1)
+    assert not f.closed()
+    f.close()
+    assert f.closed()
