@@ -735,6 +735,11 @@ class HDFile(object):
         self._handle = None  # _libhdfs releases memory
         self.mode = 'closed'
 
+    @property
+    def read1(self):
+        return self.read
+
+    @property
     def closed(self):
         return self.mode == 'closed'
 

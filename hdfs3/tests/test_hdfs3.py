@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import io
 import multiprocessing
 import os
 import tempfile
@@ -751,9 +752,20 @@ def test_closed(hdfs):
     hdfs.touch(a)
 
     f = hdfs.open(a, mode='rb', replication=1)
-    assert not f.closed()
+    assert not f.closed
     f.close()
-    assert f.closed()
+    assert f.closed
+
+
+def test_TextIOWrapper(hdfs):
+    with hdfs.open(a, mode='wb', replication=1) as f:
+        f.write(b'1,2\n3,4\n5,6')
+
+    with hdfs.open(a, mode='rb') as f:
+        ff = io.TextIOWrapper(f)
+        data = list(ff)
+
+    assert data == ['1,2\n', '3,4\n', '5,6']
 
 
 def test_array(hdfs):
