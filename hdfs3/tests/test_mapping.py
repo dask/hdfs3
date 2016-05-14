@@ -60,3 +60,19 @@ def test_pickle(hdfs):
     d2 = pickle.loads(pickle.dumps(d))
 
     assert d2['x'] == b'1'
+
+
+def test_array(hdfs):
+    from array import array
+    d = HDFSMap(hdfs, root)
+    d['x'] = array('B', [65] * 1000)
+
+    assert d['x'] == b'A' * 1000
+
+
+def test_bytearray(hdfs):
+    from array import array
+    d = HDFSMap(hdfs, root)
+    d['x'] = bytearray(b'123')
+
+    assert d['x'] == b'123'
