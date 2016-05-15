@@ -766,3 +766,15 @@ def test_TextIOWrapper(hdfs):
         data = list(ff)
 
     assert data == ['1,2\n', '3,4\n', '5,6']
+
+
+def test_array(hdfs):
+    from array import array
+    data = array('B', [65] * 1000)
+
+    with hdfs.open(a, 'wb') as f:
+        f.write(data)
+
+    with hdfs.open(a, 'rb') as f:
+        out = f.read()
+        assert out == b'A' * 1000

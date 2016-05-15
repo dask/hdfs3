@@ -70,13 +70,22 @@ conf = hdfs_conf()
 
 def ensure_bytes(s):
     """ Give strings that ctypes is guaranteed to handle """
-    if isinstance(s, dict):
-        return {k: ensure_bytes(v) for k, v in s.items()}
-    if isinstance(s, str) and sys.version_info < (3,):
+    if PY3 and isinstance(s, bytes):
+        return s
+    if not PY3 and isinstance(s, str):
         return s
     if hasattr(s, 'encode'):
         return s.encode()
+    if hasattr(s, 'tobytes'):
+        return s.tobytes()
+    if isinstance(s, bytearray):
+        return bytes(s)
+    if not PY3 and hasattr(s, 'tostring'):
+        return s.tostring()
+    if isinstance(s, dict):
+        return {k: ensure_bytes(v) for k, v in s.items()}
     else:
+        # Perhaps it works anyway - could raise here
         return s
 
 
@@ -709,7 +718,7 @@ class HDFile(object):
             raise IOError('File not write mode: {}'.format(msg))
         write_block = 64 * 2**20
         for offset in range(0, len(data), write_block):
-            d = data[offset:offset + write_block]
+            d = ensure_bytes(data[offset:offset + write_block])
             if not _lib.hdfsWrite(self._fs, self._handle, d, len(d)) == len(d):
                 msg = ensure_string(_lib.hdfsGetLastError())
                 raise IOError('Write failed on file %s, %s' % (self.path, msg))
