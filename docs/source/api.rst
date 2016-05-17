@@ -38,8 +38,19 @@ API
    HDFile.tell
    HDFile.write
 
+.. currentmodule:: hdfs3.mapping
+
+.. autosummary::
+   HDFSMap
+
+.. currentmodule:: hdfs3.core
+
 .. autoclass:: HDFileSystem
    :members:
 
 .. autoclass:: HDFile
    :members:
+
+.. currentmodule:: hdfs3.mapping
+
+.. autoclass:: HDFSMap
