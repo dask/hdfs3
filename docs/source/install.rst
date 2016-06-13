@@ -4,16 +4,14 @@ Installation
 Conda
 -----
 
-Both the compiled ``libhdfs3`` library (and its dependencies) and the ``hdfs3``
-Python project are available from the
+Both the ``hdfs3`` Python library and the compiled ``libhdfs3`` library (and its
+dependencies) are available from the
 `conda-forge <https://conda-forge.github.io/>`_ repository using
 `conda <https://www.continuum.io/downloads>`_::
 
-.. code-block:: bash
-
    $ conda install hdfs3 -c conda-forge
 
-Note that packages are only available for the ``linux-64`` platform.
+Note that conda packages are only available for the ``linux-64`` platform.
 
 PyPI and apt-get
 ----------------
