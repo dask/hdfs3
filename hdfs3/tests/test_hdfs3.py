@@ -5,6 +5,7 @@ import multiprocessing
 import os
 import tempfile
 import sys
+import pickle
 from random import randint
 from threading import Thread
 
@@ -778,3 +779,12 @@ def test_array(hdfs):
     with hdfs.open(a, 'rb') as f:
         out = f.read()
         assert out == b'A' * 1000
+
+
+def test_pickle(hdfs):
+    with hdfs.open(a, 'wb') as f:
+        f2 = pickle.loads(pickle.dumps(f))
+        assert f2._handle != f._handle
+        f2.write(b'data')
+        f2.close()
+    assert hdfs.cat(a) == b'data'
