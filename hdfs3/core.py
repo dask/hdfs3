@@ -654,6 +654,19 @@ class HDFile(object):
             else:
                 raise StopIteration
 
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        del d['_handle']
+        del d['_fs']
+        logger.debug("Serialize with state: %s", d)
+        return d
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.fs.connect()
+        self._fs = self.fs._handle
+        self._set_handle()
+
     def __iter__(self):
         """ Enables `for line in file:` usage """
         return self._genline()
