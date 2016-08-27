@@ -55,9 +55,9 @@ def test_default_port_and_host():
     assert hdfs.port == DEFAULT_PORT
 
 
-def test_token_and_ticket_cache_in_same_time()
+def test_token_and_ticket_cache_in_same_time():
     ticket_cache = "/tmp/krb5cc_0"
-    token = 'abc"
+    token = "abc"
 
     with pytest.raises(RuntimeError) as ctx:
         HDFileSystem(connect=False, ticket_cache=ticket_cache, token=token)

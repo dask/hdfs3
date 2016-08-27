@@ -152,9 +152,9 @@ class HDFileSystem(object):
         self.port = port
         self.user = user
 
-        if not (ticket_cache and token):
+        if ticket_cache and token:
             m = "It is not possible to use ticket_cache and token in same time"
-            raise RunteimError(m)
+            raise RuntimeError(m)
 
         self.ticket_cache = ticket_cache
         self.pars = pars or {}
