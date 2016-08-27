@@ -157,7 +157,7 @@ class HDFileSystem(object):
             raise RunteimError(m)
 
         self.ticket_cache = ticket_cache
-        self.pars = pars
+        self.pars = pars or {}
         self._handle = None
         if connect:
             self.connect()
