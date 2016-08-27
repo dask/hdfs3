@@ -66,6 +66,8 @@ def conf_to_dict(fname):
 
 
 conf = hdfs_conf()
+DEFAULT_HOST = conf.get('host', 'localhost')
+DEFAULT_PORT = conf.get('port', 8020)
 
 
 def ensure_bytes(s):
@@ -130,26 +132,32 @@ class HDFileSystem(object):
 
     >>> hdfs = HDFileSystem(host='127.0.0.1', port=8020)  # doctest: +SKIP
     """
-    def __init__(self, host=None, port=None, user=None, ticket_cache=None,
-            token=None, pars=None, connect=True):
+    def __init__(self, host=DEFAULT_HOST, port=DEFAULT_PORT, user=None,
+                 ticket_cache=None, token=None, pars=None, connect=True):
         """
         Parameters
         ----------
         host : str (default from config files)
-            namenode (name or IP)
-        port : int (9000)
-            connection port
+            namenode hostname or IP address, in case of HA mode it is name
+            of the cluster that can be found in "fs.defaultFS" option.
+        port : int (8020)
+            namenode RPC port usually 8020, in HA mode port mast be None
         user, ticket_cache, token : str
             kerberos things
         pars : {str: str}
-            other parameters for hadoop
+            other parameters for hadoop, that you can find in hdfs-site.xml,
+            primary used for enabling secure mode or passing HA configuration.
         """
-        self.host = host or conf.get('host', 'localhost')
-        self.port = port or conf.get('port', 8020)
+        self.host = host
+        self.port = port
         self.user = user
+
+        if not (ticket_cache and token):
+            m = "It is not possible to use ticket_cache and token in same time"
+            raise RunteimError(m)
+
         self.ticket_cache = ticket_cache
         self.pars = pars
-        self.token = None  # Delegation token (generated)
         self._handle = None
         if connect:
             self.connect()
@@ -174,18 +182,22 @@ class HDFileSystem(object):
             return
 
         o = _lib.hdfsNewBuilder()
-        _lib.hdfsBuilderSetNameNodePort(o, self.port)
+        if port is not None:
+            _lib.hdfsBuilderSetNameNodePort(o, self.port)
         _lib.hdfsBuilderSetNameNode(o, ensure_bytes(self.host))
         if self.user:
             _lib.hdfsBuilderSetUserName(o, ensure_bytes(self.user))
+
         if self.ticket_cache:
             _lib.hdfsBuilderSetKerbTicketCachePath(o, ensure_bytes(self.ticket_cache))
+
         if self.token:
             _lib.hdfsBuilderSetToken(o, ensure_bytes(self.token))
-        if self.pars:
-            for par, val in self.pars.items():
-                if not  _lib.hdfsBuilderConfSetStr(o, ensure_bytes(par), ensure_bytes(val)) == 0:
-                    warnings.warn('Setting conf parameter %s failed' % par)
+
+        for par, val in self.pars.items():
+            if not  _lib.hdfsBuilderConfSetStr(o, ensure_bytes(par), ensure_bytes(val)) == 0:
+                warnings.warn('Setting conf parameter %s failed' % par)
+
         fs = _lib.hdfsBuilderConnect(o)
         if fs:
             logger.debug("Connect to handle %d", fs.contents.filesystem)
