@@ -182,7 +182,7 @@ class HDFileSystem(object):
             return
 
         o = _lib.hdfsNewBuilder()
-        if port is not None:
+        if self.port is not None:
             _lib.hdfsBuilderSetNameNodePort(o, self.port)
         _lib.hdfsBuilderSetNameNode(o, ensure_bytes(self.host))
         if self.user:
