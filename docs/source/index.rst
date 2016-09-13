@@ -54,6 +54,8 @@ Related Work
 
 * libhdfs3_: The underlying C++ library
 * snakebite_: Another Python HDFS library using Protobufs
+* Dask_: Parent project, a parallel computing library in Python
+* Dask.distributed_: Distributed computing in Python
 
 .. toctree::
    :maxdepth: 1
@@ -69,3 +71,5 @@ Related Work
 .. _`Hadoop File System`: https://en.wikipedia.org/wiki/Apache_Hadoop
 .. _libhdfs3: http://pivotalrd.github.io/libhdfs3/
 .. _snakebite: http://snakebite.readthedocs.io/en/latest/
+.. _Dask: http://dask.pydata.org/en/latest/
+.. _Dask.distributed: http://distributed.readthedocs.org/en/latest/
