@@ -12,6 +12,7 @@ import pytest
 
 from hdfs3 import HDFileSystem, lib
 from hdfs3.core import conf_to_dict, ensure_bytes, ensure_string
+from hdfs3.core import DEFAULT_HOST, DEFAULT_PORT
 from hdfs3.compatibility import bytes, unicode, ConnectionError
 from hdfs3.utils import tmpfile
 
@@ -27,6 +28,7 @@ def hdfs():
 
     if hdfs.exists('/tmp/test'):
         hdfs.rm('/tmp/test')
+    hdfs.disconnect()
 
 
 a = '/tmp/test/a'
@@ -45,6 +47,24 @@ def test_simple(hdfs):
         out = f.read(len(data))
         assert len(data) == len(out)
         assert out == data
+
+
+def test_default_port_and_host():
+    hdfs = HDFileSystem(connect=False)
+    assert hdfs.host == DEFAULT_HOST
+    assert hdfs.port == DEFAULT_PORT
+
+
+def test_token_and_ticket_cache_in_same_time():
+    ticket_cache = "/tmp/krb5cc_0"
+    token = "abc"
+
+    with pytest.raises(RuntimeError) as ctx:
+        HDFileSystem(connect=False, ticket_cache=ticket_cache, token=token)
+
+    msg = "It is not possible to use ticket_cache and token in same time"
+    assert msg in str(ctx.value)
+
 
 def test_connection_error():
     with pytest.raises(ConnectionError) as ctx:
