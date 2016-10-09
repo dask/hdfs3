@@ -70,6 +70,6 @@ Related Work
 
 .. _`Hadoop File System`: https://en.wikipedia.org/wiki/Apache_Hadoop
 .. _libhdfs3: http://pivotalrd.github.io/libhdfs3/
-.. _snakebite: http://snakebite.readthedocs.io/en/latest/
+.. _snakebite: https://snakebite.readthedocs.io/en/latest/
 .. _Dask: http://dask.pydata.org/en/latest/
-.. _Dask.distributed: http://distributed.readthedocs.org/en/latest/
+.. _Dask.distributed: https://distributed.readthedocs.io/en/latest/

@@ -8,7 +8,7 @@ hdfs3 is a lightweight Python wrapper for libhdfs3_, a native C/C++ library to i
 View the documentation_ for hdfs3.
 
 .. _libhdfs3: https://github.com/PivotalRD/libhdfs3
-.. _documentation: http://hdfs3.readthedocs.io/en/latest/
+.. _documentation: https://hdfs3.readthedocs.io/en/latest/
 
 .. |Build Status| image:: https://travis-ci.org/dask/hdfs3.svg?branch=master
     :target: https://travis-ci.org/dask/hdfs3
