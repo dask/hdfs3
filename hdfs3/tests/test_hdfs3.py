@@ -69,6 +69,7 @@ def test_token_and_ticket_cache_in_same_time():
 def test_connection_error():
     with pytest.raises(ConnectionError) as ctx:
         hdfs = HDFileSystem(host='localhost', port=9999, connect=False)
+        hdfs.CONNECT_RETRIES = 1
         hdfs.connect()
     # error message is long and with java exceptions, so here we just check
     # that important part of error is present

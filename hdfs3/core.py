@@ -132,6 +132,9 @@ class HDFileSystem(object):
 
     >>> hdfs = HDFileSystem(host='127.0.0.1', port=8020)  # doctest: +SKIP
     """
+
+    CONNECT_RETRIES = 5
+
     def __init__(self, host=DEFAULT_HOST, port=DEFAULT_PORT, user=None,
                  ticket_cache=None, token=None, pars=None, connect=True):
         """
@@ -199,7 +202,12 @@ class HDFileSystem(object):
             if not  _lib.hdfsBuilderConfSetStr(o, ensure_bytes(par), ensure_bytes(val)) == 0:
                 warnings.warn('Setting conf parameter %s failed' % par)
 
-        fs = _lib.hdfsBuilderConnect(o)
+        trial = 0
+        while trial < self.CONNECT_RETRIES:
+            fs = _lib.hdfsBuilderConnect(o)
+            trial += 1
+            if fs:
+                break
         if fs:
             logger.debug("Connect to handle %d", fs.contents.filesystem)
             self._handle = fs
