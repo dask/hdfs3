@@ -164,6 +164,7 @@ class HDFileSystem(object):
         self.pars = pars or {}
         self._handle = None
         if connect:
+        if connect:
             self.connect()
 
     def __getstate__(self):
@@ -205,6 +206,7 @@ class HDFileSystem(object):
         trial = 0
         while trial < self.CONNECT_RETRIES:
             fs = _lib.hdfsBuilderConnect(o)
+            trial += 1
             if fs:
                 break
         if fs:
