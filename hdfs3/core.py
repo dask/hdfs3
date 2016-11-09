@@ -164,7 +164,6 @@ class HDFileSystem(object):
         self.pars = pars or {}
         self._handle = None
         if connect:
-        if connect:
             self.connect()
 
     def __getstate__(self):
