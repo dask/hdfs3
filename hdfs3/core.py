@@ -369,7 +369,10 @@ class HDFileSystem(object):
             return [o['name'] for o in out]
 
     def __repr__(self):
-        state = ['Disconnected', 'Connected'][self._handle is not None]
+        if self._handle is None:
+            state = 'Disconnected'
+        else:
+            state = 'Connected'
         return 'hdfs://%s:%s, %s' % (self.host, self.port, state)
 
     def __del__(self):
@@ -609,20 +612,22 @@ class HDFile(object):
         self._set_handle()
 
     def _set_handle(self):
-        out = _lib.hdfsOpenFile(self._fs, ensure_bytes(self.path),
-                                mode_numbers[self.mode], self.buff,
-                                ctypes.c_short(self.replication),
-                                ctypes.c_int64(self.block_size))
-        if not out:
-            msg = ensure_string(_lib.hdfsGetLastError())
-            raise IOError("Could not open file: %s, mode: %s %s" %
-                          (self.path, self.mode, msg))
-        self._handle = out
+        with lock:
+            out = _lib.hdfsOpenFile(self._fs, ensure_bytes(self.path),
+                                    mode_numbers[self.mode], self.buff,
+                                    ctypes.c_short(self.replication),
+                                    ctypes.c_int64(self.block_size))
+            if not out:
+                msg = ensure_string(_lib.hdfsGetLastError())
+                raise IOError("Could not open file: %s, mode: %s %s" %
+                              (self.path, self.mode, msg))
+            self._handle = out
 
     def read(self, length=None):
         """ Read bytes from open file """
-        if not _lib.hdfsFileIsOpenForRead(self._handle):
-            raise IOError('File not read mode')
+        with lock:
+            if not _lib.hdfsFileIsOpenForRead(self._handle):
+                raise IOError('File not read mode')
         buffers = []
 
         if length is None:
@@ -631,20 +636,21 @@ class HDFile(object):
                 out = self.read(2**16)
                 buffers.append(out)
         else:
-            while length:
-                bufsize = min(2**16, length)
-                p = ctypes.create_string_buffer(bufsize)
-                ret = _lib.hdfsRead(self._fs, self._handle, p, ctypes.c_int32(bufsize))
-                if ret == 0:
-                    break
-                if ret > 0:
-                    if ret < bufsize:
-                        buffers.append(p.raw[:ret])
-                    elif ret == bufsize:
-                        buffers.append(p.raw)
-                    length -= ret
-                else:
-                    raise IOError('Read file %s Failed:' % self.path, -ret)
+            with lock:
+                while length:
+                    bufsize = min(2**16, length)
+                    p = ctypes.create_string_buffer(bufsize)
+                    ret = _lib.hdfsRead(self._fs, self._handle, p, ctypes.c_int32(bufsize))
+                    if ret == 0:
+                        break
+                    if ret > 0:
+                        if ret < bufsize:
+                            buffers.append(p.raw[:ret])
+                        elif ret == bufsize:
+                            buffers.append(p.raw)
+                        length -= ret
+                    else:
+                        raise IOError('Read file %s Failed:' % self.path, -ret)
 
         return b''.join(buffers)
 
@@ -694,10 +700,11 @@ class HDFile(object):
 
     def tell(self):
         """ Get current byte location in a file """
-        out = _lib.hdfsTell(self._fs, self._handle)
-        if out == -1:
-            msg = ensure_string(_lib.hdfsGetLastError())
-            raise IOError('Tell Failed on file %s %s' % (self.path, msg))
+        with lock:
+            out = _lib.hdfsTell(self._fs, self._handle)
+            if out == -1:
+                msg = ensure_string(_lib.hdfsGetLastError())
+                raise IOError('Tell Failed on file %s %s' % (self.path, msg))
         return out
 
     def seek(self, offset, from_what=0):
@@ -728,10 +735,11 @@ class HDFile(object):
             offset = info['size'] + offset
         if offset < 0 or offset > info['size']:
             raise ValueError('Attempt to seek outside file')
-        out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(offset))
-        if out == -1:
-            msg = ensure_string(_lib.hdfsGetLastError())
-            raise IOError('Seek Failed on file %s' % (self.path, msg))  # pragma: no cover
+        with lock:
+            out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(offset))
+            if out == -1:
+                msg = ensure_string(_lib.hdfsGetLastError())
+                raise IOError('Seek Failed on file %s' % (self.path, msg))  # pragma: no cover
         return self.tell()
 
     def info(self):
@@ -743,15 +751,17 @@ class HDFile(object):
         data = ensure_bytes(data)
         if not data:
             return
-        if not _lib.hdfsFileIsOpenForWrite(self._handle):
-            msg = ensure_string(_lib.hdfsGetLastError())
-            raise IOError('File not write mode: {}'.format(msg))
-        write_block = 64 * 2**20
-        for offset in range(0, len(data), write_block):
-            d = ensure_bytes(data[offset:offset + write_block])
-            if not _lib.hdfsWrite(self._fs, self._handle, d, len(d)) == len(d):
+        with lock:
+            if not _lib.hdfsFileIsOpenForWrite(self._handle):
                 msg = ensure_string(_lib.hdfsGetLastError())
-                raise IOError('Write failed on file %s, %s' % (self.path, msg))
+                raise IOError('File not write mode: {}'.format(msg))
+        write_block = 64 * 2**20
+        with lock:
+            for offset in range(0, len(data), write_block):
+                d = ensure_bytes(data[offset:offset + write_block])
+                if not _lib.hdfsWrite(self._fs, self._handle, d, len(d)) == len(d):
+                    msg = ensure_string(_lib.hdfsGetLastError())
+                    raise IOError('Write failed on file %s, %s' % (self.path, msg))
         return len(data)
 
     def flush(self):
