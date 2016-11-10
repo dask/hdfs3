@@ -66,6 +66,7 @@ def test_token_and_ticket_cache_in_same_time():
     assert msg in str(ctx.value)
 
 
+@pytest.mark.slow
 def test_connection_error():
     with pytest.raises(ConnectionError) as ctx:
         hdfs = HDFileSystem(host='localhost', port=9999, connect=False)
