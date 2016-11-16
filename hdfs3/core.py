@@ -16,9 +16,9 @@ PY3 = sys.version_info.major > 2
 from .compatibility import FileNotFoundError, urlparse, ConnectionError
 from .utils import read_block
 
-import locket
+from locket import lock_file
 
-lock = locket.lock_file('.libhdfs3.lock')
+lock_name = '.libhdfs3.lock'
 
 logger = logging.getLogger(__name__)
 
@@ -185,7 +185,7 @@ class HDFileSystem(object):
         if self._handle:
             return
 
-        with lock:
+        with lock_file(lock_name):
             o = _lib.hdfsNewBuilder()
             if self.port is not None:
                 _lib.hdfsBuilderSetNameNodePort(o, self.port)
@@ -218,7 +218,7 @@ class HDFileSystem(object):
         """ Disconnect from name node """
         if self._handle:
             logger.debug("Disconnect from handle %d", self._handle.contents.filesystem)
-            with lock:
+            with lock_file(lock_name):
                 _lib.hdfsDisconnect(self._handle)
         self._handle = None
 
@@ -273,7 +273,7 @@ class HDFileSystem(object):
 
     def df(self):
         """ Used/free disc space on the HDFS system """
-        with lock:
+        with lock_file(lock_name):
             cap = _lib.hdfsGetCapacity(self._handle)
             used = _lib.hdfsGetUsed(self._handle)
         return {'capacity': cap, 'used': used, 'percent-free': 100*(cap-used)/cap}
@@ -285,7 +285,7 @@ class HDFileSystem(object):
         start = int(start) or 0
         length = int(length) or self.info(path)['size']
         nblocks = ctypes.c_int(0)
-        with lock:
+        with lock_file(lock_name):
             out = _lib.hdfsGetFileBlockLocations(self._handle, ensure_bytes(path),
                                     ctypes.c_int64(start), ctypes.c_int64(length),
                                     ctypes.byref(nblocks))
@@ -296,7 +296,7 @@ class HDFileSystem(object):
                      range(block.numOfNodes)]
             locs.append({'hosts': hosts, 'length': block.length,
                          'offset': block.offset})
-        with lock:
+        with lock_file(lock_name):
             _lib.hdfsFreeFileBlockLocations(out, nblocks)
         return locs
 
@@ -304,7 +304,7 @@ class HDFileSystem(object):
         """ File information (as a dict) """
         if not self.exists(path):
             raise FileNotFoundError(path)
-        with lock:
+        with lock_file(lock_name):
             fi = _lib.hdfsGetPathInfo(self._handle, ensure_bytes(path)).contents
             out = info_to_dict(fi)
             _lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
@@ -359,7 +359,7 @@ class HDFileSystem(object):
         if not self.exists(path):
             raise FileNotFoundError(path)
         num = ctypes.c_int(0)
-        with lock:
+        with lock_file(lock_name):
             fi = _lib.hdfsListDirectory(self._handle, ensure_bytes(path), ctypes.byref(num))
             out = [ensure_string(info_to_dict(fi[i])) for i in range(num.value)]
             _lib.hdfsFreeFileInfo(fi, num.value)
@@ -381,7 +381,7 @@ class HDFileSystem(object):
 
     def mkdir(self, path):
         """ Make directory at path """
-        with lock:
+        with lock_file(lock_name):
             out = _lib.hdfsCreateDirectory(self._handle, ensure_bytes(path))
             if out != 0:
                 msg = ensure_string(_lib.hdfsGetLastError())
@@ -397,7 +397,7 @@ class HDFileSystem(object):
         """
         if replication < 0:
             raise ValueError('Replication must be positive, or 0 for system default')
-        with lock:
+        with lock_file(lock_name):
             out = _lib.hdfsSetReplication(self._handle, ensure_bytes(path),
                                          ctypes.c_int16(int(replication)))
             if out != 0:
@@ -408,7 +408,7 @@ class HDFileSystem(object):
         """ Move file at path1 to path2 """
         if not self.exists(path1):
             raise FileNotFoundError(path1)
-        with lock:
+        with lock_file(lock_name):
             out = _lib.hdfsRename(self._handle, ensure_bytes(path1), ensure_bytes(path2))
         return out == 0
 
@@ -416,7 +416,7 @@ class HDFileSystem(object):
         "Use recursive for `rm -r`, i.e., delete directory and contents"
         if not self.exists(path):
             raise FileNotFoundError(path)
-        with lock:
+        with lock_file(lock_name):
             out = _lib.hdfsDelete(self._handle, ensure_bytes(path), bool(recursive))
             if out != 0:
                 msg = ensure_string(_lib.hdfsGetLastError())
@@ -424,7 +424,7 @@ class HDFileSystem(object):
 
     def exists(self, path):
         """ Is there an entry at path? """
-        with lock:
+        with lock_file(lock_name):
             out = _lib.hdfsExists(self._handle, ensure_bytes(path) )
         return out == 0
 
@@ -451,7 +451,7 @@ class HDFileSystem(object):
         """
         if not self.exists(path):
             raise FileNotFoundError(path)
-        with lock:
+        with lock_file(lock_name):
             out = _lib.hdfsChmod(self._handle, ensure_bytes(path), ctypes.c_short(mode))
             if out != 0:
                 msg = ensure_string(_lib.hdfsGetLastError())
@@ -461,7 +461,7 @@ class HDFileSystem(object):
         """ Change owner/group """
         if not self.exists(path):
             raise FileNotFoundError(path)
-        with lock:
+        with lock_file(lock_name):
             out = _lib.hdfsChown(self._handle, ensure_bytes(path), ensure_bytes(owner),
                                 ensure_bytes(group))
             if out != 0:
@@ -612,7 +612,7 @@ class HDFile(object):
         self._set_handle()
 
     def _set_handle(self):
-        with lock:
+        with lock_file(lock_name):
             out = _lib.hdfsOpenFile(self._fs, ensure_bytes(self.path),
                                     mode_numbers[self.mode], self.buff,
                                     ctypes.c_short(self.replication),
@@ -625,7 +625,7 @@ class HDFile(object):
 
     def read(self, length=None):
         """ Read bytes from open file """
-        with lock:
+        with lock_file(lock_name):
             if not _lib.hdfsFileIsOpenForRead(self._handle):
                 raise IOError('File not read mode')
         buffers = []
@@ -636,7 +636,7 @@ class HDFile(object):
                 out = self.read(2**16)
                 buffers.append(out)
         else:
-            with lock:
+            with lock_file(lock_name):
                 while length:
                     bufsize = min(2**16, length)
                     p = ctypes.create_string_buffer(bufsize)
@@ -700,7 +700,7 @@ class HDFile(object):
 
     def tell(self):
         """ Get current byte location in a file """
-        with lock:
+        with lock_file(lock_name):
             out = _lib.hdfsTell(self._fs, self._handle)
             if out == -1:
                 msg = ensure_string(_lib.hdfsGetLastError())
@@ -735,7 +735,7 @@ class HDFile(object):
             offset = info['size'] + offset
         if offset < 0 or offset > info['size']:
             raise ValueError('Attempt to seek outside file')
-        with lock:
+        with lock_file(lock_name):
             out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(offset))
             if out == -1:
                 msg = ensure_string(_lib.hdfsGetLastError())
@@ -751,12 +751,12 @@ class HDFile(object):
         data = ensure_bytes(data)
         if not data:
             return
-        with lock:
+        with lock_file(lock_name):
             if not _lib.hdfsFileIsOpenForWrite(self._handle):
                 msg = ensure_string(_lib.hdfsGetLastError())
                 raise IOError('File not write mode: {}'.format(msg))
         write_block = 64 * 2**20
-        with lock:
+        with lock_file(lock_name):
             for offset in range(0, len(data), write_block):
                 d = ensure_bytes(data[offset:offset + write_block])
                 if not _lib.hdfsWrite(self._fs, self._handle, d, len(d)) == len(d):
