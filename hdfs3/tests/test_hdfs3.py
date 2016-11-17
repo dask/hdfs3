@@ -6,7 +6,12 @@ import os
 import tempfile
 import sys
 from random import randint
-from threading import Thread
+try:
+    from queue import Queue
+except ImportError:
+    from Queue import Queue
+from threading import Thread, get_ident
+import traceback
 
 import pytest
 
@@ -19,7 +24,8 @@ from hdfs3.utils import tmpfile
 
 @pytest.yield_fixture
 def hdfs():
-    hdfs = HDFileSystem(host='localhost', port=8020)
+    hdfs = HDFileSystem(host='localhost', port=8020,
+                        pars={'rpc.client.connect.retry': '2'})
     if hdfs.exists('/tmp/test'):
         hdfs.rm('/tmp/test')
     hdfs.mkdir('/tmp/test')
@@ -69,7 +75,8 @@ def test_token_and_ticket_cache_in_same_time():
 @pytest.mark.slow
 def test_connection_error():
     with pytest.raises(ConnectionError) as ctx:
-        hdfs = HDFileSystem(host='localhost', port=9999, connect=False)
+        hdfs = HDFileSystem(host='localhost', port=9999, connect=False,
+                            pars={'rpc.client.connect.retry': '1'})
         hdfs.CONNECT_RETRIES = 1
         hdfs.connect()
     # error message is long and with java exceptions, so here we just check
@@ -184,10 +191,10 @@ def test_write_blocksize(hdfs):
 
 @pytest.mark.slow
 def test_write_vbig(hdfs):
-    with hdfs.open(a, 'wb') as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(b' ' * 2**31)
     assert hdfs.info(a)['size'] == 2**31
-    with hdfs.open(a, 'wb') as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(b' ' * (2**31 + 1))
     assert hdfs.info(a)['size'] == 2**31 + 1
 
@@ -221,10 +228,10 @@ def test_errors(hdfs):
         hdfs.mv('/tmp/test/shfoshf/x', '/tmp/test/shfoshf/y')
 
     with pytest.raises((IOError, OSError)):
-        hdfs.open('/x', 'wb')
+        hdfs.open('/nonexistent/x', 'wb')
 
     with pytest.raises((IOError, OSError)):
-        hdfs.open('/x', 'rb')
+        hdfs.open('/nonexistent/x', 'rb')
 
     with pytest.raises(IOError):
         hdfs.chown('/unknown', 'someone', 'group')
@@ -338,14 +345,14 @@ def test_exists(hdfs):
 
 
 def test_cat(hdfs):
-    with hdfs.open(a, 'wb') as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(b'0123456789')
     assert hdfs.cat(a) == b'0123456789'
     with pytest.raises(IOError):
         hdfs.cat(b)
 
 def test_full_read(hdfs):
-    with hdfs.open(a, 'wb') as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(b'0123456789')
 
     with hdfs.open(a, 'rb') as f:
@@ -365,7 +372,7 @@ def test_full_read(hdfs):
         assert f.tell() == 10
 
 def test_tail_head(hdfs):
-    with hdfs.open(a, 'wb') as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(b'0123456789')
 
     assert hdfs.tail(a, 3) == b'789'
@@ -431,7 +438,7 @@ def test_read_delimited_block(hdfs):
     delimiter = b'\n'
     data = delimiter.join([b'123', b'456', b'789'])
 
-    with hdfs.open(fn, 'wb') as f:
+    with hdfs.open(fn, 'wb', replication=1) as f:
         f.write(data)
 
     assert hdfs.read_block(fn, 1, 2) == b'23'
@@ -453,7 +460,7 @@ def test_read_delimited_block(hdfs):
 
 @pytest.mark.parametrize(['lineterminator'], [(b'\n',), (b'--',)])
 def test_readline(hdfs, lineterminator):
-    with hdfs.open(a, 'wb') as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(lineterminator.join([b'123', b'456', b'789']))
 
     with hdfs.open(a) as f:
@@ -463,15 +470,22 @@ def test_readline(hdfs, lineterminator):
         assert f.readline(lineterminator=lineterminator) == b''
 
 
-def read_write(hdfs, i):
-    hdfs.df()
-    hdfs.du('/', True, True)
-    data = b'0' * 10000
-    with hdfs.open('/tmp/test/%d' % i, 'wb') as f:
-        f.write(data)
-    with hdfs.open('/tmp/test/%d' % i, 'rb') as f:
-        data2 = f.read()
-    assert data == data2
+def read_write(hdfs, q, i):
+    try:
+        hdfs.df()
+        hdfs.du('/', True, True)
+        data = b'0' * 10000
+        fn = '/tmp/test/foo%d' % i
+        with hdfs.open(fn, 'wb', replication=1) as f:
+            f.write(data)
+        with hdfs.open(fn, 'rb') as f:
+            data2 = f.read()
+        assert data == data2
+    except BaseException as e:
+        traceback.print_exc()
+        q.put(str(e))
+    else:
+        q.put(None)
 
 
 @pytest.mark.skipif(sys.version_info < (3, 4), reason='No spawn')
@@ -480,13 +494,18 @@ def test_stress_embarrassing(hdfs):
         return
 
     ctx = multiprocessing.get_context('spawn')
-    for proc in [Thread, ctx.Process]:
-        threads = [proc(target=read_write, args=(hdfs, i)) for
+    for proc, queue in [(Thread, Queue), (ctx.Process, ctx.Queue)]:
+        q = queue()
+        threads = [proc(target=read_write, args=(hdfs, q, i)) for
                    i in range(10)]
         for t in threads:
             t.start()
         for t in threads:
             t.join()
+        while not q.empty():
+            error = q.get()
+            if error:
+                raise AssertionError("error in child: " + error)
 
 
 def read_random_block(hdfs, fn, n, delim):
@@ -500,7 +519,7 @@ def test_stress_read_block(hdfs):
     data = b'hello, world!\n' * 10000
 
     for T in (Thread, ctx.Process,):
-        with hdfs.open(a, 'wb') as f:
+        with hdfs.open(a, 'wb', replication=1) as f:
             f.write(data)
 
         threads = [T(target=read_random_block, args=(hdfs, a, len(data), b'\n'))
@@ -542,6 +561,33 @@ def test_different_handles_in_processes():
         p.join()
 
 
+@pytest.mark.skipif(not hasattr(os, 'fork'), reason='No fork()')
+def test_warn_on_fork():
+    hdfs = HDFileSystem(host='localhost', port=8020)
+    hdfs.disconnect()
+
+    pid = os.fork()
+    if not pid:
+        # In child
+        try:
+            with pytest.warns(RuntimeWarning) as record:
+                hdfs = HDFileSystem(host='localhost', port=8020)
+            assert len(record) == 1
+            assert ("Attempting to re-use hdfs3 in child process"
+                    in str(record[0].message))
+        except BaseException:
+            print("\n------ Child exception -------")
+            traceback.print_exc()
+            print("------------------------------")
+            os._exit(1)
+        else:
+            os._exit(0)
+    retpid, status = os.waitpid(pid, 0)
+    assert retpid == pid
+    if status:
+        pytest.fail("child raised exception")
+
+
 def test_ensure():
     assert isinstance(ensure_bytes(''), bytes)
     assert isinstance(ensure_bytes(b''), bytes)
@@ -566,7 +612,7 @@ def test_write_in_read_mode(hdfs):
 
 
 def test_readlines(hdfs):
-    with hdfs.open(a, 'wb') as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(b'123\n456')
 
     with hdfs.open(a, 'rb') as f:
@@ -576,12 +622,12 @@ def test_readlines(hdfs):
     with hdfs.open(a, 'rb') as f:
         assert list(f) == lines
 
-    with hdfs.open(a, 'wb') as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         with pytest.raises(IOError):
             f.read()
 
     bigdata = [b'fe', b'fi', b'fo'] * 32000
-    with hdfs.open(a, 'wb') as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(b'\n'.join(bigdata))
     with hdfs.open(a, 'rb') as f:
         lines = list(f)
@@ -600,9 +646,9 @@ def test_put(hdfs):
 
 
 def test_getmerge(hdfs):
-    with hdfs.open(a, 'wb') as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(b'123')
-    with hdfs.open(b, 'wb') as f:
+    with hdfs.open(b, 'wb', replication=1) as f:
         f.write(b'456')
 
     with tmpfile() as fn:
@@ -616,7 +662,7 @@ def test_getmerge(hdfs):
 def test_get(hdfs):
     data = b'1234567890'
     with tmpfile() as fn:
-        with hdfs.open(a, 'wb') as f:
+        with hdfs.open(a, 'wb', replication=1) as f:
             f.write(data)
 
         hdfs.get(a, fn)
@@ -636,13 +682,13 @@ def test_open_errors(hdfs):
 
     hdfs.disconnect()
     with pytest.raises(IOError):
-        hdfs.open(a, 'wb')
+        hdfs.open(a, 'wb', replication=1)
 
 
 def test_du(hdfs):
-    with hdfs.open(a, 'wb') as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(b'123')
-    with hdfs.open(b, 'wb') as f:
+    with hdfs.open(b, 'wb', replication=1) as f:
         f.write(b'4567')
 
     assert hdfs.du('/tmp/test') == {a: 3, b: 4}
@@ -650,7 +696,7 @@ def test_du(hdfs):
 
 
 def test_get_block_locations(hdfs):
-    with hdfs.open(a, 'wb') as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(b'123')
 
     locs = hdfs.get_block_locations(a)
@@ -697,7 +743,7 @@ def test_text_bytes(hdfs):
     except NotImplementedError as e:
         assert 'ab' in str(e)
 
-    with hdfs.open(a, 'wb') as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(b'123')
 
     with hdfs.open(a, 'rb') as f:
@@ -773,7 +819,7 @@ def test_fooable(hdfs):
 def test_closed(hdfs):
     hdfs.touch(a)
 
-    f = hdfs.open(a, mode='rb', replication=1)
+    f = hdfs.open(a, mode='rb')
     assert not f.closed
     f.close()
     assert f.closed
@@ -794,7 +840,7 @@ def test_array(hdfs):
     from array import array
     data = array('B', [65] * 1000)
 
-    with hdfs.open(a, 'wb') as f:
+    with hdfs.open(a, 'wb', replication=1) as f:
         f.write(data)
 
     with hdfs.open(a, 'rb') as f:

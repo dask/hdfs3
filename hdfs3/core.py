@@ -18,7 +18,9 @@ from .utils import read_block
 
 from locket import lock_file
 
-lock_name = '.libhdfs3.lock'
+
+lock_dir = os.path.join(os.path.expanduser('~'), '.dask')
+lock_name = os.path.join(lock_dir, '.libhdfs3.lock')
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +137,8 @@ class HDFileSystem(object):
 
     >>> hdfs = HDFileSystem(host='127.0.0.1', port=8020)  # doctest: +SKIP
     """
+    _first_pid = None
+
     def __init__(self, host=DEFAULT_HOST, port=DEFAULT_PORT, user=None,
                  ticket_cache=None, token=None, pars=None, connect=True):
         """
@@ -154,6 +158,7 @@ class HDFileSystem(object):
         self.host = host
         self.port = port
         self.user = user
+        self._handle = None
 
         if ticket_cache and token:
             m = "It is not possible to use ticket_cache and token in same time"
@@ -162,7 +167,6 @@ class HDFileSystem(object):
         self.ticket_cache = ticket_cache
         self.token = token
         self.pars = pars or {}
-        self._handle = None
         if connect:
             self.connect()
 
@@ -185,6 +189,16 @@ class HDFileSystem(object):
         if self._handle:
             return
 
+        if HDFileSystem._first_pid is None:
+            HDFileSystem._first_pid = os.getpid()
+        elif HDFileSystem._first_pid != os.getpid():
+            warnings.warn("Attempting to re-use hdfs3 in child process %d, "
+                          "but it was initialized in parent process %d. "
+                          "Beware that hdfs3 is not fork-safe and this may "
+                          "lead to bugs or crashes."
+                          % (os.getpid(), HDFileSystem._first_pid),
+                          RuntimeWarning, stacklevel=2)
+
         with lock_file(lock_name):
             o = _lib.hdfsNewBuilder()
             if self.port is not None:
@@ -204,6 +218,7 @@ class HDFileSystem(object):
                     warnings.warn('Setting conf parameter %s failed' % par)
 
             fs = _lib.hdfsBuilderConnect(o)
+            _lib.hdfsFreeBuilder(o)
             if fs:
                 logger.debug("Connect to handle %d", fs.contents.filesystem)
                 self._handle = fs
