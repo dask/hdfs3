@@ -499,9 +499,9 @@ class HDFileSystem(object):
                         out = f.read(blocksize)
                         f2.write(out)
 
-    def put(self, filename, path, chunk=2**16):
+    def put(self, filename, path, chunk=2**16, replication=0,block_size=0):
         """ Copy local file to path in HDFS """
-        with self.open(path, 'wb') as f:
+        with self.open(path, 'wb',replication=replication,block_size=block_size) as f:
             with open(filename, 'rb') as f2:
                 while True:
                     out = f2.read(chunk)
