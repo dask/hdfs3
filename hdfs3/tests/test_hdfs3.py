@@ -10,7 +10,7 @@ try:
     from queue import Queue
 except ImportError:
     from Queue import Queue
-from threading import Thread, get_ident
+from threading import Thread
 import traceback
 
 import pytest
