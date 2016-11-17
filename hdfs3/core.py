@@ -20,6 +20,8 @@ from locket import lock_file
 
 
 lock_dir = os.path.join(os.path.expanduser('~'), '.dask')
+if not os.path.exists(lock_dir):
+    os.mkdir(lock_dir)
 lock_name = os.path.join(lock_dir, '.libhdfs3.lock')
 
 logger = logging.getLogger(__name__)
