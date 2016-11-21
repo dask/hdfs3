@@ -17,7 +17,6 @@ except OSError:
             "See installation instructions at "
             "https://hdfs3.readthedocs.io/en/latest/install.html")
 
-
 tSize = ct.c_int32
 tTime = ct.c_int64
 tOffset = ct.c_int64
