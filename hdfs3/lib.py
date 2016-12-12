@@ -13,9 +13,14 @@ PY3 = sys.version_info.major > 2
 try:
     _lib = ct.cdll.LoadLibrary('libhdfs3.so')
 except OSError:
-    raise ImportError("Can not find the shared library: libhdfs3.so\n"
-            "See installation instructions at "
-            "https://hdfs3.readthedocs.io/en/latest/install.html")
+    try:
+        import os
+        env = os.path.dirname(os.path.dirname(sys.executable))
+        _lib = ct.cdll.LoadLibrary(os.path.join(env, 'lib', 'libhdfs3.so'))
+    except OSError:
+        raise ImportError("Can not find the shared library: libhdfs3.so\n"
+                "See installation instructions at "
+                "http://hdfs3.readthedocs.io/en/latest/install.html")
 
 tSize = ct.c_int32
 tTime = ct.c_int64
