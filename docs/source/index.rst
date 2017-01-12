@@ -69,7 +69,7 @@ Related Work
    limitations
 
 .. _`Hadoop File System`: https://en.wikipedia.org/wiki/Apache_Hadoop
-.. _libhdfs3: http://pivotalrd.github.io/libhdfs3/
+.. _libhdfs3: https://github.com/Pivotal-Data-Attic/pivotalrd-libhdfs3
 .. _snakebite: https://snakebite.readthedocs.io/en/latest/
 .. _Dask: http://dask.pydata.org/en/latest/
 .. _Dask.distributed: https://distributed.readthedocs.io/en/latest/
