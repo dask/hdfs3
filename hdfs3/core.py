@@ -50,24 +50,13 @@ def conf_to_dict(fname):
         val = val_match.search(line)
         if val:
             val = val.groups()[0]
-            try:
-                val = int(val)
-            except ValueError:
-                try:
-                    val = float(val)
-                except ValueError:
-                    pass
-            if val == 'false':
-                val = False
-            if val == 'true':
-                val = True
             conf[key] = val
     return conf
 
 
 conf = hdfs_conf()
 DEFAULT_HOST = conf.get('host', 'localhost')
-DEFAULT_PORT = conf.get('port', 8020)
+DEFAULT_PORT = int(conf.get('port', 8020))
 
 
 def ensure_bytes(s):

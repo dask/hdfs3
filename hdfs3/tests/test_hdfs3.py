@@ -424,12 +424,12 @@ def conffile():
 
 
 def test_conf(conffile):
-    should = {'dfs.block.size': 134217728,
-             'dfs.datanode.hdfs-blocks-metadata.enabled': True,
+    should = {'dfs.block.size': '134217728',
+             'dfs.datanode.hdfs-blocks-metadata.enabled': 'true',
              'dfs.namenode.name.dir': '/mnt/data/dfs/nn',
-             'dfs.permissions': False,
+             'dfs.permissions': 'false',
              'dfs.permissions.superusergroup': 'hadoop',
-             'dfs.replication': 3}
+             'dfs.replication': '3'}
     assert conf_to_dict(conffile) == should
 
 
