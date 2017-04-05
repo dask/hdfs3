@@ -442,20 +442,20 @@ def test_read_delimited_block(hdfs):
         f.write(data)
 
     assert hdfs.read_block(fn, 1, 2) == b'23'
-    assert hdfs.read_block(fn, 0, 1, delimiter=b'\n') == b'123'
-    assert hdfs.read_block(fn, 0, 2, delimiter=b'\n') == b'123'
-    assert hdfs.read_block(fn, 0, 3, delimiter=b'\n') == b'123'
-    assert hdfs.read_block(fn, 0, 5, delimiter=b'\n') == b'123\n456'
+    assert hdfs.read_block(fn, 0, 1, delimiter=b'\n') == b'123\n'
+    assert hdfs.read_block(fn, 0, 2, delimiter=b'\n') == b'123\n'
+    assert hdfs.read_block(fn, 0, 3, delimiter=b'\n') == b'123\n'
+    assert hdfs.read_block(fn, 0, 5, delimiter=b'\n') == b'123\n456\n'
     assert hdfs.read_block(fn, 0, 8, delimiter=b'\n') == b'123\n456\n789'
     assert hdfs.read_block(fn, 0, 100, delimiter=b'\n') == b'123\n456\n789'
     assert hdfs.read_block(fn, 1, 1, delimiter=b'\n') == b''
-    assert hdfs.read_block(fn, 1, 5, delimiter=b'\n') == b'456'
+    assert hdfs.read_block(fn, 1, 5, delimiter=b'\n') == b'456\n'
     assert hdfs.read_block(fn, 1, 8, delimiter=b'\n') == b'456\n789'
 
     for ols in [[(0, 3), (3, 3), (6, 3), (9, 2)],
                 [(0, 4), (4, 4), (8, 4)]]:
         out = [hdfs.read_block(fn, o, l, b'\n') for o, l in ols]
-        assert delimiter.join(filter(None, out)) == data
+        assert b''.join(filter(None, out)) == data
 
 
 @pytest.mark.parametrize(['lineterminator'], [(b'\n',), (b'--',)])
@@ -468,6 +468,18 @@ def test_readline(hdfs, lineterminator):
         assert f.readline(lineterminator=lineterminator) == b'456'+lineterminator
         assert f.readline(lineterminator=lineterminator) == b'789'
         assert f.readline(lineterminator=lineterminator) == b''
+
+
+@pytest.mark.parametrize(['lineterminator'], [(b'\n',), (b'--',)])
+def test_mixed_readline(hdfs, lineterminator):
+    with hdfs.open(a, 'wb', replication=1) as f:
+        f.write(lineterminator.join([b'123', b'456', b'789']))
+
+    with hdfs.open(a) as f:
+        assert f.read(1) == b'1'
+        assert f.readline(lineterminator=lineterminator) == b'23'+lineterminator
+        assert f.read(1) == b'4'
+        assert f.readline(lineterminator=lineterminator) == b'56'+lineterminator
 
 
 def read_write(hdfs, q, i):

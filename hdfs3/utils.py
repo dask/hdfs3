@@ -5,7 +5,7 @@ import shutil
 import tempfile
 
 
-def seek_delimiter(file, delimiter, blocksize):
+def seek_delimiter(file, delimiter, blocksize, allow_zero=True):
     """ Seek current file to next byte after a delimiter bytestring
 
     This seeks the file to the next byte following the delimiter.  It does
@@ -20,7 +20,7 @@ def seek_delimiter(file, delimiter, blocksize):
         Number of bytes to read from the file at once.
     """
 
-    if file.tell() == 0:
+    if file.tell() == 0 and allow_zero:
         return
 
     last = b''
@@ -85,9 +85,6 @@ def read_block(f, offset, length, delimiter=None):
 
         offset = start
         length = end - start
-
-        if length and not eof:
-            length -= len(delimiter)
 
     f.seek(offset)
     bytes = f.read(length)
