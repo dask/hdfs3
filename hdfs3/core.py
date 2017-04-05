@@ -14,7 +14,7 @@ from .lib import _lib
 PY3 = sys.version_info.major > 2
 
 from .compatibility import FileNotFoundError, urlparse, ConnectionError
-from .utils import read_block
+from .utils import read_block, seek_delimiter
 
 
 logger = logging.getLogger(__name__)
@@ -636,7 +636,7 @@ class HDFile(object):
 
         return b''.join(buffers)
 
-    def readline(self, chunksize=2**16, lineterminator='\n'):
+    def readline(self, chunksize=2**8, lineterminator='\n'):
         """ Return a line using buffered reading.
 
         Reads and caches chunksize bytes of data, and caches lines
@@ -649,20 +649,11 @@ class HDFile(object):
         Line iteration uses this method internally.
         """
         lineterminator = ensure_bytes(lineterminator)
-        if len(self.lines) < 2:
-            buffers = []
-            while True:
-                out = self.read(chunksize)
-                buffers.append(out)
-                if lineterminator in out:
-                    break
-                if not out:
-                    remains = list(self.lines)
-                    self.lines = deque([])
-                    return b''.join(remains + buffers)
-            self.lines = deque(b''.join(list(self.lines) +
-                                        buffers).split(lineterminator))
-        return self.lines.popleft() + lineterminator
+        start = self.tell()
+        seek_delimiter(self, lineterminator, chunksize, allow_zero=False)
+        end = self.tell()
+        self.seek(start)
+        return self.read(end - start)
 
     def _genline(self):
         while True:
