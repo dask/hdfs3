@@ -33,8 +33,10 @@ def hdfs_conf():
             pass
     if 'fs.defaultFS' in conf:
         u = urlparse(conf['fs.defaultFS'])  # pragma: no cover
-        conf['host'] = u.hostname  # pragma: no cover
-        conf['port'] = u.port  # pragma: no cover
+        if u.hostname != None:
+            conf['host'] = u.hostname  # pragma: no cover
+        if u.port != None:
+            conf['port'] = u.port  # pragma: no cover
     return conf
 
 
