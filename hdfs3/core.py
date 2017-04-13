@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 def hdfs_conf(conf_dir=None):
     """ Load HDFS config from default locations. """
-    if conf_dir=None:
+    if conf_dir == None:
         confd = os.environ.get('HADOOP_CONF_DIR', os.environ.get('HADOOP_INSTALL',
                            '') + '/hadoop/conf')
     else:

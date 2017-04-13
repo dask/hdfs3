@@ -16,7 +16,7 @@ import traceback
 import pytest
 
 from hdfs3 import HDFileSystem, lib
-from hdfs3.core import conf_to_dict, ensure_bytes, ensure_string
+from hdfs3.core import conf_to_dict, ensure_bytes, ensure_string, hdfs_conf
 from hdfs3.core import DEFAULT_HOST, DEFAULT_PORT
 from hdfs3.compatibility import bytes, unicode, ConnectionError
 from hdfs3.utils import tmpfile
