@@ -20,10 +20,13 @@ from .utils import read_block, seek_delimiter
 logger = logging.getLogger(__name__)
 
 
-def hdfs_conf(conf_dir='/hadoop/conf'):
+def hdfs_conf(conf_dir=None):
     """ Load HDFS config from default locations. """
-    confd = os.environ.get('HADOOP_CONF_DIR', os.environ.get('HADOOP_INSTALL',
-                           '') + conf_dir)
+    if conf_dir=None:
+        confd = os.environ.get('HADOOP_CONF_DIR', os.environ.get('HADOOP_INSTALL',
+                           '') + '/hadoop/conf')
+    else:
+        confd = conf_dir
     files = 'core-site.xml', 'hdfs-site.xml'
     conf = {}
     for afile in files:
