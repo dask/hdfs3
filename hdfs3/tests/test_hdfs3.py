@@ -58,9 +58,9 @@ def test_no_conf():
     os.environ.pop('HADOOP_CONF_DIR', '')
     os.environ.pop('HADOOP_INSTALL', '')
     conf = hdfs_conf()
-    if conf['host']:
+    if 'host' in conf:
         assert conf['host'] is not None
-    if conf['port']:
+    if 'port' in conf:
         assert conf['port'] is not None
 
 def test_default_port_and_host():
