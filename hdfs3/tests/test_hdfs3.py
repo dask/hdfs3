@@ -57,7 +57,7 @@ def test_simple(hdfs):
 def test_no_conf():
     os.environ.pop('HADOOP_CONF_DIR', '')
     os.environ.pop('HADOOP_INSTALL', '')
-    conf = hdfs3.core.conf()
+    conf = conf()
     assert conf['host'] is not None
     assert conf['port'] is not None
 
