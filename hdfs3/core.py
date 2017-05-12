@@ -24,7 +24,7 @@ def hdfs_conf(conf_dir=None):
     """ Load HDFS config from default locations. """
     if conf_dir == None:
         confd = os.environ.get('HADOOP_CONF_DIR', os.environ.get('HADOOP_INSTALL',
-                           '') + '/hadoop/conf')
+                           '/etc') + '/hadoop/conf')
     else:
         confd = conf_dir
     files = 'core-site.xml', 'hdfs-site.xml'
