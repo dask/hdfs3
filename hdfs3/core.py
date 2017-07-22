@@ -11,20 +11,20 @@ import warnings
 from collections import deque
 from .lib import _lib
 
-PY3 = sys.version_info.major > 2
 
 from .compatibility import FileNotFoundError, urlparse, ConnectionError
 from .utils import read_block, seek_delimiter
 
+PY3 = sys.version_info.major > 2
 
 logger = logging.getLogger(__name__)
 
 
 def hdfs_conf(conf_dir=None):
     """ Load HDFS config from default locations. """
-    if conf_dir == None:
-        confd = os.environ.get('HADOOP_CONF_DIR', os.environ.get('HADOOP_INSTALL',
-                           '') + '/hadoop/conf')
+    if conf_dir is None:
+        confd = os.environ.get('HADOOP_CONF_DIR', os.environ.get(
+            'HADOOP_INSTALL', '') + '/hadoop/conf')
     else:
         confd = conf_dir
     files = 'core-site.xml', 'hdfs-site.xml'
@@ -202,7 +202,8 @@ class HDFileSystem(object):
             _lib.hdfsBuilderSetToken(o, ensure_bytes(self.token))
 
         for par, val in self.pars.items():
-            if not  _lib.hdfsBuilderConfSetStr(o, ensure_bytes(par), ensure_bytes(val)) == 0:
+            if not _lib.hdfsBuilderConfSetStr(o, ensure_bytes(par),
+                                              ensure_bytes(val)) == 0:
                 warnings.warn('Setting conf parameter %s failed' % par)
 
         fs = _lib.hdfsBuilderConnect(o)
@@ -210,12 +211,20 @@ class HDFileSystem(object):
         if fs:
             logger.debug("Connect to handle %d", fs.contents.filesystem)
             self._handle = fs
-            #if self.token:   # TODO: find out what a delegation token is
-            #    self._token = _lib.hdfsGetDelegationToken(self._handle,
-            #                                             ensure_bytes(self.user))
         else:
             msg = ensure_string(_lib.hdfsGetLastError())
             raise ConnectionError('Connection Failed: {}'.format(msg))
+
+    def delegate_token(self, user=None):
+        """Generate delegate auth token.
+
+        Parameters
+        ----------
+        user: bytes/str
+            User to pass to delegation (defaults to user supplied to instance).
+        """
+        user = user or self.user or b''
+        return _lib.hdfsGetDelegationToken(self._handle, ensure_bytes(user))
 
     def disconnect(self):
         """ Disconnect from name node """
