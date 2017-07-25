@@ -221,10 +221,55 @@ class HDFileSystem(object):
         Parameters
         ----------
         user: bytes/str
-            User to pass to delegation (defaults to user supplied to instance).
+            User to pass to delegation (defaults to user supplied to instance);
+            this user is the only one that can renew the token.
         """
         user = user or self.user or b''
-        return _lib.hdfsGetDelegationToken(self._handle, ensure_bytes(user))
+        out = _lib.hdfsGetDelegationToken(self._handle, ensure_bytes(user))
+        if out:
+            self.token = out
+            return out
+        else:
+            raise RuntimeError('Token delegation failed')
+
+    def renew_token(self, token=None):
+        """
+        Renew delegation token
+        
+        Parameters
+        ----------
+        token: str or None
+            If None, uses the instance's token. It is an error to do that if
+            there is no token.
+
+        Returns
+        -------
+        New expiration time for the token
+        """
+        token = token or self.token
+        if token is None:
+            raise ValueError('There is no token to renew')
+        return _lib.hdfsRenewDelegationToken(self._handle, ensure_bytes(token))
+
+    def cancel_token(self, token=None):
+        """
+        Revoke delegation token
+        
+        Parameters
+        ----------
+        token: str or None
+            If None, uses the instance's token. It is an error to do that if
+            there is no token.
+        """
+        token = token or self.token
+        if token is None:
+            raise ValueError('There is no token to cancel')
+        out = _lib.hdfsCancelDelegationToken(self._handle, ensure_bytes(token))
+        if out:
+            raise RuntimeError('Token cancel failed')
+        if token == self.token:
+            # now our token is invalid - this FS may not work
+            self.token = None
 
     def disconnect(self):
         """ Disconnect from name node """
