@@ -866,3 +866,17 @@ def test_array(hdfs):
     with hdfs.open(a, 'rb') as f:
         out = f.read()
         assert out == b'A' * 1000
+
+
+def test_next(hdfs):
+    data = b'Sometimes you eat the bear\nAnd sometimes, well\nHe eats you'
+    splitted_lines = data.split(b'\n')
+
+    with hdfs.open(a, 'wb', replication=1) as f:
+        f.write(data)
+
+    with hdfs.open(a, 'rb') as f:
+        for splitted_line in splitted_lines:
+            assert splitted_line == next(f).strip()
+        with pytest.raises(StopIteration):
+            next(f)
