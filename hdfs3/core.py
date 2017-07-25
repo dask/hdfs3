@@ -726,6 +726,17 @@ class HDFile(object):
         """ Enables `for line in file:` usage """
         return self._genline()
 
+    def __next__(self):
+        """ Enables reading a file as a buffer in pandas """
+        out = self.readline()
+        if out:
+            return out
+        else:
+            raise StopIteration
+
+    # PY2 compatibility
+    next = __next__
+
     def readlines(self):
         """ Return all lines in a file as a list """
         return list(self)
