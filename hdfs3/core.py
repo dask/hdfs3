@@ -224,7 +224,9 @@ class HDFileSystem(object):
             User to pass to delegation (defaults to user supplied to instance);
             this user is the only one that can renew the token.
         """
-        user = user or self.user or b''
+        if user is None and self.user is None:
+            raise ValueError('Delegation requires a user')
+        user = user or self.user
         out = _lib.hdfsGetDelegationToken(self._handle, ensure_bytes(user))
         if out:
             self.token = out
