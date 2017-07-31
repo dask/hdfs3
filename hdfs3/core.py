@@ -9,6 +9,10 @@ import sys
 import re
 import warnings
 from collections import deque
+
+# if we an find hdfs-site.xml,
+# set LIBHDFS3_CONF
+
 from .lib import _lib
 
 
@@ -44,7 +48,7 @@ def hdfs_conf(conf_dir=None):
 
 
 def conf_to_dict(fname):
-    """ Read a hdfs-site.xml style conf file, produces dictionary """
+    """ Read a *-site.xml style conf file, produces dictionary """
     name_match = re.compile("<name>(.*?)</name>")
     val_match = re.compile("<value>(.*?)</value>")
     conf = {}
@@ -399,7 +403,7 @@ class HDFileSystem(object):
                f.replace('//', '/').rstrip('/'))]
         return out
 
-    def ls(self, path, detail=True):
+    def ls(self, path, detail=False):
         """ List files at path
 
         Parameters
@@ -413,7 +417,8 @@ class HDFileSystem(object):
         if not self.exists(path):
             raise FileNotFoundError(path)
         num = ctypes.c_int(0)
-        fi = _lib.hdfsListDirectory(self._handle, ensure_bytes(path), ctypes.byref(num))
+        fi = _lib.hdfsListDirectory(self._handle, ensure_bytes(path),
+                                    ctypes.byref(num))
         out = [ensure_string(info_to_dict(fi[i])) for i in range(num.value)]
         _lib.hdfsFreeFileInfo(fi, num.value)
         if detail:
@@ -448,9 +453,10 @@ class HDFileSystem(object):
         number of data-nodes).
         """
         if replication < 0:
-            raise ValueError('Replication must be positive, or 0 for system default')
+            raise ValueError('Replication must be positive,'
+                             ' or 0 for system default')
         out = _lib.hdfsSetReplication(self._handle, ensure_bytes(path),
-                                     ctypes.c_int16(int(replication)))
+                                      ctypes.c_int16(int(replication)))
         if out != 0:
             msg = ensure_string(_lib.hdfsGetLastError())
             raise IOError('Set replication failed: {}'.format(msg))
@@ -461,6 +467,26 @@ class HDFileSystem(object):
             raise FileNotFoundError(path1)
         out = _lib.hdfsRename(self._handle, ensure_bytes(path1), ensure_bytes(path2))
         return out == 0
+
+    def concat(self, destination, paths):
+        """Concatenate inputs to destination
+        
+        Source files *should* all have the same block size and replication.
+        The destination file must be in the same directory as
+        the source files. If the target exists, it will be appended to.
+        
+        The source files are deleted on successful
+        completion.
+        """
+        if not self.exists(destination):
+            self.touch(destination)
+        arr = (ctypes.c_char_p * (len(paths) + 1))()
+        arr[:-1] = [ensure_bytes(s) for s in paths]
+        arr[-1] = ctypes.c_char_p()  # NULL pointer
+        out = _lib.hdfsConcat(self._handle, ensure_bytes(destination), arr)
+        if out != 0:
+            msg = ensure_string(_lib.hdfsGetLastError())
+            raise IOError('Concat failed on %s %s' % (destination, msg))
 
     def rm(self, path, recursive=True):
         "Use recursive for `rm -r`, i.e., delete directory and contents"
@@ -613,21 +639,41 @@ class HDFileSystem(object):
             bytes = read_block(f, offset, length, delimiter)
         return bytes
 
+    def list_encryption_zones(self):
+        """Get list of all the encryption zones"""
+        x = ctypes.c_int(8)
+        out = _lib.hdfsListEncryptionZones(self._handle, x)
+        if not out:
+            msg = ensure_string(_lib.hdfsGetLastError())
+            raise IOError("EZ listing failed: %s" % msg)
+
+        res = [struct_to_dict(out[i]) for i in range(x.value)]
+        if res:
+            _lib.hdfsFreeEncryptionZoneInfo(out, x)
+        return res
+
 
 def struct_to_dict(s):
-    """ Return dictionary vies of a simple ctypes record-like structure """
-    return dict((ensure_string(name), getattr(s, name)) for (name, p) in s._fields_)
+    """ Return dictionary views of a simple ctypes record-like structure """
+    return dict((ensure_string(name), getattr(s, name))
+                for (name, p) in s._fields_)
 
 
 def info_to_dict(s):
     """ Process data returned by hdfsInfo """
     d = struct_to_dict(s)
     d['kind'] = {68: 'directory', 70: 'file'}[d['kind']]
+    if d['encryption_info']:
+        d['encryption_info'] = struct_to_dict(d['encryption_info'].contents)
+
+    else:
+        d['encryption_info'] = None
     return d
 
 
 mode_numbers = {'w': 1, 'r': 0, 'a': 1025,
                 'wb': 1, 'rb': 0, 'ab': 1025}
+
 
 class HDFile(object):
     """ File on HDFS
