@@ -324,11 +324,11 @@ class HDFileSystem(object):
         deep : bool (False)
             whether to recurse into subdirectories
         """
-        fi = self.ls(path)
+        fi = self.ls(path, True)
         if deep:
             for apath in fi:
                 if apath['kind'] == 'directory':
-                    fi.extend(self.ls(apath['name']))
+                    fi.extend(self.ls(apath['name'], True))
         if total:
             return {path: sum(f['size'] for f in fi)}
         return {p['name']: p['size'] for p in fi}
@@ -525,7 +525,8 @@ class HDFileSystem(object):
         """
         if not self.exists(path):
             raise FileNotFoundError(path)
-        out = _lib.hdfsChmod(self._handle, ensure_bytes(path), ctypes.c_short(mode))
+        out = _lib.hdfsChmod(self._handle, ensure_bytes(path),
+                             ctypes.c_short(mode))
         if out != 0:
             msg = ensure_string(_lib.hdfsGetLastError())
             raise IOError("chmod failed on %s %s" % (path, msg))
@@ -561,11 +562,11 @@ class HDFileSystem(object):
                     f2.write(out)
 
     def getmerge(self, path, filename, blocksize=2**16):
-        """ Concat all files in path (a directory) to output file """
+        """ Concat all files in path (a directory) to local output file """
         files = self.ls(path)
         with open(filename, 'wb') as f2:
             for apath in files:
-                with self.open(apath['name'], 'rb') as f:
+                with self.open(apath, 'rb') as f:
                     out = 1
                     while out:
                         out = f.read(blocksize)
@@ -652,6 +653,13 @@ class HDFileSystem(object):
             _lib.hdfsFreeEncryptionZoneInfo(out, x)
         return res
 
+    def create_encryption_zone(self, path, key_name):
+        out = _lib.hdfsCreateEncryptionZone(self._handle, ensure_bytes(path),
+                                            ensure_bytes(key_name))
+        if out != 0:
+            msg = ensure_string(_lib.hdfsGetLastError())
+            raise IOError("EZ create failed: %s %s" % (path, msg))
+
 
 def struct_to_dict(s):
     """ Return dictionary views of a simple ctypes record-like structure """
@@ -665,7 +673,6 @@ def info_to_dict(s):
     d['kind'] = {68: 'directory', 70: 'file'}[d['kind']]
     if d['encryption_info']:
         d['encryption_info'] = struct_to_dict(d['encryption_info'].contents)
-
     else:
         d['encryption_info'] = None
     return d
@@ -690,7 +697,8 @@ class HDFile(object):
     def __init__(self, fs, path, mode, replication=0, buff=0, block_size=0):
         """ Called by open on a HDFileSystem """
         if 't' in mode:
-            raise NotImplementedError("Opening a file in text mode is not yet supported")
+            raise NotImplementedError("Opening a file in text mode is not"
+                                      " supported, use ``io.TextIOWrapper``.")
         self.fs = fs
         self.path = path
         self.replication = replication
@@ -729,7 +737,8 @@ class HDFile(object):
             while length:
                 bufsize = min(2**16, length)
                 p = ctypes.create_string_buffer(bufsize)
-                ret = _lib.hdfsRead(self._fs, self._handle, p, ctypes.c_int32(bufsize))
+                ret = _lib.hdfsRead(
+                    self._fs, self._handle, p, ctypes.c_int32(bufsize))
                 if ret == 0:
                     break
                 if ret > 0:
@@ -746,14 +755,14 @@ class HDFile(object):
     def readline(self, chunksize=2**8, lineterminator='\n'):
         """ Return a line using buffered reading.
 
-        Reads and caches chunksize bytes of data, and caches lines
-        locally. Subsequent readline calls deplete those lines until
-        empty, when a new chunk will be read. A read and readline are
-        not therefore generally pointing to the same location in the file;
-        `seek()` and `tell()` will give the true location in the file,
-        which will be one chunk in even after calling `readline` once.
+        A line is a sequence of bytes between ``'\n'`` markers (or given
+        line-terminator).
 
         Line iteration uses this method internally.
+        
+        Note: this function requires many calls to HDFS and is slow; it is
+        in general better to wrap an HDFile with an ``io.TextIOWrapper`` for
+        buffering, text decoding and newline support. 
         """
         lineterminator = ensure_bytes(lineterminator)
         start = self.tell()
@@ -826,9 +835,9 @@ class HDFile(object):
         if offset < 0 or offset > info['size']:
             raise ValueError('Attempt to seek outside file')
         out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(offset))
-        if out == -1:
+        if out == -1:  # pragma: no cover
             msg = ensure_string(_lib.hdfsGetLastError())
-            raise IOError('Seek Failed on file %s' % (self.path, msg))  # pragma: no cover
+            raise IOError('Seek Failed on file %s' % (self.path, msg))
         return self.tell()
 
     def info(self):
@@ -852,7 +861,7 @@ class HDFile(object):
         return len(data)
 
     def flush(self):
-        """ Send buffer to the data-node; actual write to disc may happen later """
+        """ Send buffer to the data-node; actual write may happen later """
         _lib.hdfsFlush(self._fs, self._handle)
 
     def close(self):
@@ -884,7 +893,7 @@ class HDFile(object):
 
     def __repr__(self):
         return 'hdfs://%s:%s%s, %s' % (self.fs.host, self.fs.port,
-                                            self.path, self.mode)
+                                       self.path, self.mode)
 
     def __enter__(self):
         return self

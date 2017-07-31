@@ -22,9 +22,12 @@ from hdfs3.compatibility import bytes, unicode, ConnectionError
 from hdfs3.utils import tmpfile
 
 
+test_host = 'localhost'
+test_port = 8020
+
 @pytest.yield_fixture
 def hdfs():
-    hdfs = HDFileSystem(host='localhost', port=8020,
+    hdfs = HDFileSystem(host=test_host, port=test_port,
                         pars={'rpc.client.connect.retry': '2'})
     if hdfs.exists('/tmp/test'):
         hdfs.rm('/tmp/test')
@@ -101,7 +104,7 @@ def test_ls_touch(hdfs):
     assert not hdfs.ls('/tmp/test')
     hdfs.touch(a)
     hdfs.touch(b)
-    L = hdfs.ls('/tmp/test')
+    L = hdfs.ls('/tmp/test', True)
     assert set(d['name'] for d in L) == set([a, b])
     L = hdfs.ls('/tmp/test', False)
     assert set(L) == set([a, b])
@@ -552,13 +555,13 @@ def test_stress_read_block(hdfs):
 
 
 def test_different_handles():
-    a = HDFileSystem(host='localhost', port=8020)
-    b = HDFileSystem(host='localhost', port=8020)
+    a = HDFileSystem(host=test_host, port=test_port)
+    b = HDFileSystem(host=test_host, port=test_port)
     assert a._handle.contents.filesystem != b._handle.contents.filesystem
 
 
 def handle(q):
-    hdfs = HDFileSystem(host='localhost', port=8020)
+    hdfs = HDFileSystem(host=test_host, port=test_port)
     q.put(hdfs._handle.contents.filesystem)
 
 
@@ -566,7 +569,7 @@ def handle(q):
 def test_different_handles_in_processes():
     ctx = multiprocessing.get_context('spawn')
 
-    hdfs = HDFileSystem(host='localhost', port=8020)
+    hdfs = HDFileSystem(host=test_host, port=test_port)
     q = ctx.Queue()
     n = 20
     procs = [ctx.Process(target=handle, args=(q,)) for i in range(n)]
@@ -583,7 +586,7 @@ def test_different_handles_in_processes():
 
 @pytest.mark.skipif(not hasattr(os, 'fork'), reason='No fork()')
 def test_warn_on_fork():
-    hdfs = HDFileSystem(host='localhost', port=8020)
+    hdfs = HDFileSystem(host=test_host, port=test_port)
     hdfs.disconnect()
 
     pid = os.fork()
@@ -591,7 +594,7 @@ def test_warn_on_fork():
         # In child
         try:
             with pytest.warns(RuntimeWarning) as record:
-                hdfs = HDFileSystem(host='localhost', port=8020)
+                hdfs = HDFileSystem(host=test_host, port=test_port)
             assert len(record) == 1
             assert ("Attempting to re-use hdfs3 in child process"
                     in str(record[0].message))
@@ -646,12 +649,13 @@ def test_readlines(hdfs):
         with pytest.raises(IOError):
             f.read()
 
-    bigdata = [b'fe', b'fi', b'fo'] * 32000
-    with hdfs.open(a, 'wb', replication=1) as f:
-        f.write(b'\n'.join(bigdata))
-    with hdfs.open(a, 'rb') as f:
-        lines = list(f)
-    assert all(l in [b'fe\n', b'fi\n', b'fo', b'fo\n'] for l in lines)
+    # too slow
+    # bigdata = [b'fe', b'fi', b'fo'] * 32000
+    # with hdfs.open(a, 'wb', replication=1) as f:
+    #     f.write(b'\n'.join(bigdata))
+    # with hdfs.open(a, 'rb') as f:
+    #     lines = list(f)
+    # assert all(l in [b'fe\n', b'fi\n', b'fo', b'fo\n'] for l in lines)
 
 
 def test_put(hdfs):
@@ -726,9 +730,9 @@ def test_get_block_locations(hdfs):
 
 def test_chmod(hdfs):
     hdfs.touch(a)
-    assert hdfs.ls(a)[0]['permissions'] == 0o777
+    assert hdfs.ls(a, True)[0]['permissions'] == 0o777
     hdfs.chmod(a, 0o500)
-    assert hdfs.ls(a)[0]['permissions'] == 0o500
+    assert hdfs.ls(a, True)[0]['permissions'] == 0o500
     hdfs.chmod(a, 0o100)
     with pytest.raises(IOError):
         hdfs.open(a, 'ab')
@@ -880,3 +884,13 @@ def test_next(hdfs):
             assert splitted_line == next(f).strip()
         with pytest.raises(StopIteration):
             next(f)
+
+
+def test_concat(hdfs):
+    for fn in [a, b, c, d]:
+        with hdfs.open(fn, 'wb') as f:
+            f.write(fn.encode())
+    fn = '/tmp/test/out'
+    hdfs.concat(fn, [a, b, c, d])
+    out = hdfs.cat(fn)
+    assert out == "".join([a, b, c, d]).encode()

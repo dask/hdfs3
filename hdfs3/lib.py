@@ -40,20 +40,20 @@ class BlockLocation(ct.Structure):
 
 
 class EncryptionFileInfo(ct.Structure):
-    _fields_ = [('mSuite', ct.c_int),
-                ('mCryptoProtocolVersion', ct.c_int),
-                ('mKey', ct.c_char_p),
-                ('mKeyName', ct.c_char_p),
+    _fields_ = [('suite', ct.c_int),
+                ('protocol_version', ct.c_int),
+                ('key', ct.c_char_p),
+                ('key_name', ct.c_char_p),
                 ('mIv', ct.c_char_p),
-                ('mEzKeyVersionName', ct.c_char_p)]
+                ('zone_key_version_name', ct.c_char_p)]
 
 
 class EncryptionZoneInfo(ct.Structure):
-    _fileds_ = [('mSuite', ct.c_int),
-                ('mCryptoProtocolVersion', ct.c_int),
+    _fileds_ = [('suite', ct.c_int),
+                ('protocol_version', ct.c_int),
                 ('mId', ct.c_int64),
-                ('mPath', ct.c_char_p),
-                ('mKeyName', ct.c_char_p)]
+                ('path', ct.c_char_p),
+                ('key_name', ct.c_char_p)]
 
 
 class FileInfo(ct.Structure):
@@ -81,11 +81,14 @@ param path The path of the file.
 return Returns a dynamically-allocated hdfsFileInfo object;
 NULL on error."""
 
+
 class hdfsBuilder(ct.Structure):
     pass
 
+
 class hdfsFile(ct.Structure):
     _fields_ = [('input', ct.c_bool), ('stream', ct.c_void_p)]
+
 
 class hdfsFS(ct.Structure):
     _fields_ = [('filesystem', ct.c_void_p)]  # TODO: expand this if needed
@@ -158,7 +161,7 @@ deprecated Use hdfsBuilderConnect instead."""
 hdfsConnectNewInstance = _lib.hdfsConnectNewInstance
 hdfsConnectNewInstance.argtypes = [ct.c_char_p, tPort]
 hdfsConnectNewInstance.restype = ct.POINTER(hdfsFS)
-hdfsConnectNewInstance.__doc__ = "Connect to a hdfs file system"
+hdfsConnectNewInstance.__doc__ = "New structure for connection information"
 
 hdfsBuilderConnect = _lib.hdfsBuilderConnect
 hdfsBuilderConnect.argtypes = [ct.POINTER(hdfsBuilder)]
@@ -636,3 +639,13 @@ hdfsListEncryptionZones.__doc__ = """Get list of all the encryption zones.
 param fs The configured filesystem handle.
 return Returns a dynamically-allocated array of hdfsEncryptionZoneInfo objects;
 NULL on error."""
+
+hdfsCreateEncryptionZone = _lib.hdfsCreateEncryptionZone
+hdfsCreateEncryptionZone.argtypes = [ct.POINTER(hdfsFS), ct.c_char_p, ct.c_char_p]
+hdfsCreateEncryptionZone.restype = ct.c_int
+hdfsCreateEncryptionZone.__doc__ = """Create encryption zone for the directory
+
+param fs The configured filesystem handle.
+param path The path of the directory.
+param keyname The key name of the encryption zone 
+return Returns 0 on success, -1 on error."""
