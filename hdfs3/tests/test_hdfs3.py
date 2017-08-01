@@ -23,7 +23,7 @@ from hdfs3.utils import tmpfile
 
 
 test_host = 'localhost'
-test_port = 9000
+test_port = 8020
 
 @pytest.yield_fixture
 def hdfs():
@@ -894,10 +894,15 @@ def test_next(hdfs):
 
 
 def test_concat(hdfs):
-    for fn in [a, b, c, d]:
-        with hdfs.open(fn, 'wb') as f:
-            f.write(fn.encode())
-    fn = '/tmp/test/out'
-    hdfs.concat(fn, [a, b, c, d])
-    out = hdfs.cat(fn)
-    assert out == "".join([a, b, c, d]).encode()
+    out = b''
+    for fn, data in zip([a, b, c, d], [b'a', b'b', b'c', b'd']):
+        with hdfs.open(fn, 'wb', block_size=1048576, replication=1) as f:
+            f.write(data * 1048576)
+            out += data * 1048576
+            if fn == d:
+                # last block can be non-full
+                f.write(b'extra')
+                out += b'extra'
+    hdfs.concat(a, [b, c, d])
+    data = hdfs.cat(a)
+    assert out == data

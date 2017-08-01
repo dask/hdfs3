@@ -216,7 +216,7 @@ class HDFileSystem(object):
             logger.debug("Connect to handle %d", fs.contents.filesystem)
             self._handle = fs
         else:
-            msg = ensure_string(_lib.hdfsGetLastError())
+            msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise ConnectionError('Connection Failed: {}'.format(msg))
 
     def delegate_token(self, user=None):
@@ -441,15 +441,15 @@ class HDFileSystem(object):
         """ Make directory at path """
         out = _lib.hdfsCreateDirectory(self._handle, ensure_bytes(path))
         if out != 0:
-            msg = ensure_string(_lib.hdfsGetLastError())
+            msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError('Create directory failed: {}'.format(msg))
 
-    def makedirs(self, path, mode=0o511):
+    def makedirs(self, path, mode=0o711):
         """ Create directory together with any necessary intermediates """
         out = _lib.hdfsCreateDirectoryEx(self._handle, ensure_bytes(path),
                                          ctypes.c_short(mode), 1)
         if out != 0:
-            msg = ensure_string(_lib.hdfsGetLastError())
+            msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError('Create directory failed: {}'.format(msg))
 
     def set_replication(self, path, replication):
@@ -466,7 +466,7 @@ class HDFileSystem(object):
         out = _lib.hdfsSetReplication(self._handle, ensure_bytes(path),
                                       ctypes.c_int16(int(replication)))
         if out != 0:
-            msg = ensure_string(_lib.hdfsGetLastError())
+            msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError('Set replication failed: {}'.format(msg))
 
     def mv(self, path1, path2):
@@ -483,6 +483,10 @@ class HDFileSystem(object):
         The destination file must be in the same directory as
         the source files. If the target exists, it will be appended to.
         
+        Some HDFSs impose that the target file must exist and be an exact
+        number of blocks long, and that each concated file except the last
+        is also a whole number of blocks.
+        
         The source files are deleted on successful
         completion.
         """
@@ -493,7 +497,7 @@ class HDFileSystem(object):
         arr[-1] = ctypes.c_char_p()  # NULL pointer
         out = _lib.hdfsConcat(self._handle, ensure_bytes(destination), arr)
         if out != 0:
-            msg = ensure_string(_lib.hdfsGetLastError())
+            msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError('Concat failed on %s %s' % (destination, msg))
 
     def rm(self, path, recursive=True):
@@ -502,7 +506,7 @@ class HDFileSystem(object):
             raise FileNotFoundError(path)
         out = _lib.hdfsDelete(self._handle, ensure_bytes(path), bool(recursive))
         if out != 0:
-            msg = ensure_string(_lib.hdfsGetLastError())
+            msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError('Remove failed on %s %s' % (path, msg))
 
     def exists(self, path):
@@ -536,7 +540,7 @@ class HDFileSystem(object):
         out = _lib.hdfsChmod(self._handle, ensure_bytes(path),
                              ctypes.c_short(mode))
         if out != 0:
-            msg = ensure_string(_lib.hdfsGetLastError())
+            msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError("chmod failed on %s %s" % (path, msg))
 
     def chown(self, path, owner, group):
@@ -546,7 +550,7 @@ class HDFileSystem(object):
         out = _lib.hdfsChown(self._handle, ensure_bytes(path), ensure_bytes(owner),
                             ensure_bytes(group))
         if out != 0:
-            msg = ensure_string(_lib.hdfsGetLastError())
+            msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError("chown failed on %s %s" % (path, msg))
 
     def cat(self, path):
@@ -653,7 +657,7 @@ class HDFileSystem(object):
         x = ctypes.c_int(8)
         out = _lib.hdfsListEncryptionZones(self._handle, x)
         if not out:
-            msg = ensure_string(_lib.hdfsGetLastError())
+            msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError("EZ listing failed: %s" % msg)
 
         res = [struct_to_dict(out[i]) for i in range(x.value)]
@@ -665,7 +669,7 @@ class HDFileSystem(object):
         out = _lib.hdfsCreateEncryptionZone(self._handle, ensure_bytes(path),
                                             ensure_bytes(key_name))
         if out != 0:
-            msg = ensure_string(_lib.hdfsGetLastError())
+            msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError("EZ create failed: %s %s" % (path, msg))
 
 
@@ -725,7 +729,7 @@ class HDFile(object):
                                 ctypes.c_short(self.replication),
                                 ctypes.c_int64(self.block_size))
         if not out:
-            msg = ensure_string(_lib.hdfsGetLastError())
+            msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError("Could not open file: %s, mode: %s %s" %
                           (self.path, self.mode, msg))
         self._handle = out
@@ -810,7 +814,7 @@ class HDFile(object):
         """ Get current byte location in a file """
         out = _lib.hdfsTell(self._fs, self._handle)
         if out == -1:
-            msg = ensure_string(_lib.hdfsGetLastError())
+            msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError('Tell Failed on file %s %s' % (self.path, msg))
         return out
 
@@ -844,7 +848,7 @@ class HDFile(object):
             raise ValueError('Attempt to seek outside file')
         out = _lib.hdfsSeek(self._fs, self._handle, ctypes.c_int64(offset))
         if out == -1:  # pragma: no cover
-            msg = ensure_string(_lib.hdfsGetLastError())
+            msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError('Seek Failed on file %s' % (self.path, msg))
         return self.tell()
 
@@ -858,13 +862,13 @@ class HDFile(object):
         if not data:
             return
         if not _lib.hdfsFileIsOpenForWrite(self._handle):
-            msg = ensure_string(_lib.hdfsGetLastError())
+            msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError('File not write mode: {}'.format(msg))
         write_block = 64 * 2**20
         for offset in range(0, len(data), write_block):
             d = ensure_bytes(data[offset:offset + write_block])
             if not _lib.hdfsWrite(self._fs, self._handle, d, len(d)) == len(d):
-                msg = ensure_string(_lib.hdfsGetLastError())
+                msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
                 raise IOError('Write failed on file %s, %s' % (self.path, msg))
         return len(data)
 
