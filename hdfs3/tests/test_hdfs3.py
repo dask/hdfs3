@@ -23,7 +23,7 @@ from hdfs3.utils import tmpfile
 
 
 test_host = 'localhost'
-test_port = 8020
+test_port = 9000
 
 @pytest.yield_fixture
 def hdfs():
@@ -36,7 +36,7 @@ def hdfs():
     yield hdfs
 
     if hdfs.exists('/tmp/test'):
-        hdfs.rm('/tmp/test')
+        hdfs.rm('/tmp/test', recursive=True)
     hdfs.disconnect()
 
 
@@ -225,6 +225,7 @@ def test_replication(hdfs):
     with pytest.raises(IOError):
         hdfs.open(path, 'wb', replication=-1).close()
 
+
 def test_errors(hdfs):
     with pytest.raises((IOError, OSError)):
         hdfs.open('/tmp/test/shfoshf', 'rb')
@@ -252,6 +253,11 @@ def test_errors(hdfs):
 
     with pytest.raises(IOError):
         hdfs.rm('/unknown')
+
+
+def test_makedirs(hdfs):
+    hdfs.makedirs('/tmp/test/a/b/c/d/e')
+    hdfs.info('/tmp/test/a/b/c/d/e')
 
 
 def test_glob_walk(hdfs):
@@ -782,6 +788,7 @@ def test_open_deep_file(hdfs):
     msg = "Could not open file: /tmp/test/a/b/c/d/e/f, mode: wb " \
           "Parent directory doesn't exist"
     assert msg in str(ctx.value)
+
 
 def test_append(hdfs):
     with hdfs.open(a, mode='ab', replication=1) as f:

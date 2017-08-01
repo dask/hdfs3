@@ -444,6 +444,14 @@ class HDFileSystem(object):
             msg = ensure_string(_lib.hdfsGetLastError())
             raise IOError('Create directory failed: {}'.format(msg))
 
+    def makedirs(self, path, mode=0o511):
+        """ Create directory together with any necessary intermediates """
+        out = _lib.hdfsCreateDirectoryEx(self._handle, ensure_bytes(path),
+                                         ctypes.c_short(mode), 1)
+        if out != 0:
+            msg = ensure_string(_lib.hdfsGetLastError())
+            raise IOError('Create directory failed: {}'.format(msg))
+
     def set_replication(self, path, replication):
         """ Instruct HDFS to set the replication for the given file.
 

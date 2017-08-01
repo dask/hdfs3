@@ -473,6 +473,19 @@ param fs The configured filesystem handle.
 param path The path of the directory.
 return Returns 0 on success, -1 on error."""
 
+hdfsCreateDirectoryEx = _lib.hdfsCreateDirectoryEx
+hdfsCreateDirectoryEx.argtypes = [ct.POINTER(hdfsFS), ct.c_char_p,
+                                  ct.c_short, ct.c_int]
+hdfsCreateDirectoryEx.restype = ct.c_int
+hdfsCreateDirectoryEx.__doc__ = """Make the given file with extended options
+
+param fs The configured filesystem handle.
+param path The path of the directory.
+param mode The permissions for created file and directories.
+param createParents Controls whether to create all non-existent parent directories or not
+return Returns 0 on success, -1 on error."""
+
+
 hdfsSetReplication = _lib.hdfsSetReplication
 hdfsSetReplication.argtypes = [ct.POINTER(hdfsFS), ct.c_char_p, ct.c_int16]
 hdfsSetReplication.__doc__ = """Set the replication of the specified
