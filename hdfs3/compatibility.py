@@ -10,6 +10,7 @@ if sys.version_info < (3,):
     from urlparse import urlparse
     unicode = unicode
     bytes = str
+    PY3 = False
 else:
     ConnectionError = ConnectionError
     PermissionError = PermissionError
@@ -17,3 +18,5 @@ else:
     from urllib.parse import urlparse
     unicode = str
     bytes = bytes
+    PY3 = True
+

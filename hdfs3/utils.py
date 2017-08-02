@@ -4,6 +4,8 @@ import os
 import shutil
 import tempfile
 
+from .compatibility import PY3
+
 
 def seek_delimiter(file, delimiter, blocksize, allow_zero=True):
     """ Seek current file to next byte after a delimiter bytestring
@@ -89,6 +91,63 @@ def read_block(f, offset, length, delimiter=None):
     f.seek(offset)
     bytes = f.read(length)
     return bytes
+
+
+def ensure_bytes(s):
+    """ Give strings that ctypes is guaranteed to handle """
+    if PY3 and isinstance(s, bytes):
+        return s
+    if not PY3 and isinstance(s, str):
+        return s
+    if hasattr(s, 'encode'):
+        return s.encode()
+    if hasattr(s, 'tobytes'):
+        return s.tobytes()
+    if isinstance(s, bytearray):
+        return bytes(s)
+    if not PY3 and hasattr(s, 'tostring'):
+        return s.tostring()
+    if isinstance(s, dict):
+        return {k: ensure_bytes(v) for k, v in s.items()}
+    else:
+        # Perhaps it works anyway - could raise here
+        return s
+
+
+def ensure_string(s):
+    """ Ensure that the result is a string
+
+    >>> ensure_string(b'123')
+    '123'
+    >>> ensure_string('123')
+    '123'
+    >>> ensure_string({'x': b'123'})
+    {'x': '123'}
+    """
+    if isinstance(s, dict):
+        return {k: ensure_string(v) for k, v in s.items()}
+    if hasattr(s, 'decode'):
+        return s.decode()
+    else:
+        return s
+
+
+def ensure_trailing_slash(s, ensure=True):
+    """ Ensure that string ends with a slash
+
+    >>> ensure_trailing_slash('/user/directory')
+    '/user/directory/'
+    >>> ensure_trailing_slash('/user/directory/')
+    '/user/directory/'
+    >>> ensure_trailing_slash('/user/directory/', False)
+    '/user/directory'
+    """
+    slash = '/' if isinstance(s, str) else b'/'
+    if ensure and not s.endswith(slash):
+        s += slash
+    if not ensure and s.endswith(slash):
+        s = s[:-1]
+    return s
 
 
 @contextmanager

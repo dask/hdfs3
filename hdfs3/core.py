@@ -5,120 +5,18 @@ from __future__ import absolute_import
 import ctypes
 import logging
 import os
-import sys
 import re
 import warnings
 from collections import deque
 from .lib import _lib
 
 
-from .compatibility import FileNotFoundError, urlparse, ConnectionError
-from .utils import read_block, seek_delimiter
-
-PY3 = sys.version_info.major > 2
+from .compatibility import FileNotFoundError, ConnectionError, PY3
+from .conf import conf
+from .utils import (read_block, seek_delimiter, ensure_bytes, ensure_string,
+                    ensure_trailing_slash)
 
 logger = logging.getLogger(__name__)
-
-
-def hdfs_conf(conf_dir=None):
-    """ Load HDFS config from default locations. """
-    if conf_dir is None:
-        confd = os.environ.get('HADOOP_CONF_DIR', os.environ.get(
-            'HADOOP_INSTALL', '') + '/hadoop/conf')
-    else:
-        confd = conf_dir
-    files = 'core-site.xml', 'hdfs-site.xml'
-    conf = {}
-    for afile in files:
-        try:
-            conf.update(conf_to_dict(os.sep.join([confd, afile])))
-        except FileNotFoundError:
-            pass
-    if 'fs.defaultFS' in conf:
-        u = urlparse(conf['fs.defaultFS'])  # pragma: no cover
-        if u.hostname != None:
-            conf['host'] = u.hostname  # pragma: no cover
-        if u.port != None:
-            conf['port'] = u.port  # pragma: no cover
-    return conf
-
-
-def conf_to_dict(fname):
-    """ Read a hdfs-site.xml style conf file, produces dictionary """
-    name_match = re.compile("<name>(.*?)</name>")
-    val_match = re.compile("<value>(.*?)</value>")
-    conf = {}
-    for line in open(fname):
-        name = name_match.search(line)
-        if name:
-            key = name.groups()[0]
-        val = val_match.search(line)
-        if val:
-            val = val.groups()[0]
-            conf[key] = val
-    return conf
-
-
-conf = hdfs_conf()
-DEFAULT_HOST = conf.get('host', 'localhost')
-DEFAULT_PORT = int(conf.get('port', 8020))
-
-
-def ensure_bytes(s):
-    """ Give strings that ctypes is guaranteed to handle """
-    if PY3 and isinstance(s, bytes):
-        return s
-    if not PY3 and isinstance(s, str):
-        return s
-    if hasattr(s, 'encode'):
-        return s.encode()
-    if hasattr(s, 'tobytes'):
-        return s.tobytes()
-    if isinstance(s, bytearray):
-        return bytes(s)
-    if not PY3 and hasattr(s, 'tostring'):
-        return s.tostring()
-    if isinstance(s, dict):
-        return {k: ensure_bytes(v) for k, v in s.items()}
-    else:
-        # Perhaps it works anyway - could raise here
-        return s
-
-
-def ensure_string(s):
-    """ Ensure that the result is a string
-
-    >>> ensure_string(b'123')
-    '123'
-    >>> ensure_string('123')
-    '123'
-    >>> ensure_string({'x': b'123'})
-    {'x': '123'}
-    """
-    if isinstance(s, dict):
-        return {k: ensure_string(v) for k, v in s.items()}
-    if hasattr(s, 'decode'):
-        return s.decode()
-    else:
-        return s
-
-
-def ensure_trailing_slash(s, ensure=True):
-    """ Ensure that string ends with a slash
-
-    >>> ensure_trailing_slash('/user/directory')
-    '/user/directory/'
-    >>> ensure_trailing_slash('/user/directory/')
-    '/user/directory/'
-    >>> ensure_trailing_slash('/user/directory/', False)
-    '/user/directory'
-    """
-    slash = '/' if isinstance(s, str) else b'/'
-    if ensure and not s.endswith(slash):
-        s += slash
-    if not ensure and s.endswith(slash):
-        s = s[:-1]
-    return s
 
 
 class HDFileSystem(object):
@@ -128,34 +26,44 @@ class HDFileSystem(object):
     """
     _first_pid = None
 
-    def __init__(self, host=DEFAULT_HOST, port=DEFAULT_PORT, user=None,
-                 ticket_cache=None, token=None, pars=None, connect=True):
+    def __init__(self, connect=True, autoconf=True, pars=None, **kwargs):
         """
         Parameters
         ----------
-        host : str (default from config files)
-            namenode hostname or IP address, in case of HA mode it is name
-            of the cluster that can be found in "fs.defaultFS" option.
-        port : int (8020)
-            namenode RPC port usually 8020, in HA mode port mast be None
-        user, ticket_cache, token : str
-            kerberos things
+        connect: bool (True)
+            Whether to automatically attempt to establish a connection to the
+            name-node.
+        autoconf: bool (True)
+            Whether to use the configuration found in the conf module as
+            the set of defaults
         pars : {str: str}
-            other parameters for hadoop, that you can find in hdfs-site.xml,
-            primary used for enabling secure mode or passing HA configuration.
+            any parameters for hadoop, that you can find in hdfs-site.xml,
+            https://hadoop.apache.org/docs/r2.6.0/hadoop-project-dist/hadoop-hdfs/hdfs-default.xml
+            This dict looks exactly like the one produced by conf - you can,
+            for example, remove any problematic entries.
+        kwargs: key/value
+            Further override parameters.
+            These are applied after the default conf and pars; the most typical
+            things to set are:
+            host : str (localhost)
+                namenode hostname or IP address, in case of HA mode it is name
+                of the cluster that can be found in "fs.defaultFS" option.
+            port : int (8020)
+                namenode RPC port usually 8020, in HA mode port mast be None
+            user, ticket_cache, token : str
+                kerberos things
         """
-        self.host = host
-        self.port = port
-        self.user = user
+        self.conf = conf.copy() if autoconf else {}
+        if pars:
+            self.conf.update(pars)
+        self.conf.update(kwargs)
+
         self._handle = None
 
-        if ticket_cache and token:
-            m = "It is not possible to use ticket_cache and token in same time"
+        if self.conf.get('ticket_cache', None) and self.conf.get('token', None):
+            m = "It is not possible to use ticket_cache and token at same time"
             raise RuntimeError(m)
 
-        self.ticket_cache = ticket_cache
-        self.token = token
-        self.pars = pars or {}
         if connect:
             self.connect()
 
@@ -175,6 +83,7 @@ class HDFileSystem(object):
 
         This happens automatically at startup
         """
+        conf = self.conf.copy()
         if self._handle:
             return
 
@@ -189,19 +98,21 @@ class HDFileSystem(object):
                           RuntimeWarning, stacklevel=2)
 
         o = _lib.hdfsNewBuilder()
-        if self.port is not None:
-            _lib.hdfsBuilderSetNameNodePort(o, self.port)
-        _lib.hdfsBuilderSetNameNode(o, ensure_bytes(self.host))
-        if self.user:
-            _lib.hdfsBuilderSetUserName(o, ensure_bytes(self.user))
+        if conf['port'] is not None:
+            _lib.hdfsBuilderSetNameNodePort(o, conf.pop('port'))
+        _lib.hdfsBuilderSetNameNode(o, ensure_bytes(conf.pop('host')))
+        if 'user' in conf:
+            _lib.hdfsBuilderSetUserName(
+                o, ensure_bytes(conf.pop('user')))
 
-        if self.ticket_cache:
-            _lib.hdfsBuilderSetKerbTicketCachePath(o, ensure_bytes(self.ticket_cache))
+        if 'ticket_cache' in conf:
+            _lib.hdfsBuilderSetKerbTicketCachePath(
+                o, ensure_bytes(conf.pop('ticket_cache')))
 
-        if self.token:
-            _lib.hdfsBuilderSetToken(o, ensure_bytes(self.token))
+        if 'token' in conf:
+            _lib.hdfsBuilderSetToken(o, ensure_bytes(conf.pop('token')))
 
-        for par, val in self.pars.items():
+        for par, val in conf.items():
             if not _lib.hdfsBuilderConfSetStr(o, ensure_bytes(par),
                                               ensure_bytes(val)) == 0:
                 warnings.warn('Setting conf parameter %s failed' % par)
