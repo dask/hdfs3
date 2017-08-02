@@ -285,6 +285,14 @@ class HDFileSystem(object):
         else:
             return [o['name'] for o in out]
 
+    @property
+    def host(self):
+        return self.conf.get('host', '')
+
+    @property
+    def port(self):
+        return self.conf.get('port', '')
+
     def __repr__(self):
         if self._handle is None:
             state = 'Disconnected'
