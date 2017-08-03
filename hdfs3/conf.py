@@ -6,7 +6,8 @@ import warnings
 from .compatibility import FileNotFoundError
 
 # standard defaults
-conf = {'host': 'localhost', 'port': 8020}
+conf_defaults = {'host': 'localhost', 'port': 8020}
+conf = conf_defaults.copy()
 
 
 def hdfs_conf(confd):
@@ -48,6 +49,11 @@ def hdfs_conf(confd):
         conf['host'] = ''
     conf.clear()
     conf.update(c)
+
+
+def reset_to_defaults():
+    conf.clear()
+    conf.update(conf_defaults)
 
 
 def conf_to_dict(fname):
