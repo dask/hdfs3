@@ -65,7 +65,7 @@ def test_with_hadoop_conf(simple_conf_file):
 
 
 def test_with_file(simple_conf_file):
-    hdfs_conf(simple_conf_file)
+    hdfs_conf(os.path.dirname(simple_conf_file))
     assert conf['host'] == 'this.place'
     assert conf['port'] == 9999
     assert conf['dfs.replication'] == '1'
