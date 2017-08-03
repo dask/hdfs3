@@ -10,15 +10,28 @@ from hdfs3 import HDFileSystem
 @pytest.yield_fixture()
 def no_conf():
     # clear environment
-    os.environ.pop('HADOOP_CONF_DIR', '')
-    os.environ.pop('HADOOP_INSTALL', '')
-    os.environ.pop('LIBHDFS3_CONF', '')
+    hcd = os.environ.pop('HADOOP_CONF_DIR', None)
+    hi = os.environ.pop('HADOOP_INSTALL', None)
+    lh3c = os.environ.pop('LIBHDFS3_CONF', None)
     yield
+    # carefully reset
+    if hcd:
+        os.environ['HADOOP_CONF_DIR'] = hcd
+    else:
+        os.environ.pop('HADOOP_CONF_DIR', None)
+    if hi:
+        os.environ['HADOOP_INSTALL'] = hi
+    else:
+        os.environ.pop('HADOOP_INSTALL', None)
+    if lh3c:
+        os.environ['LIBHDFS3_CONF'] = lh3c
+    else:
+        os.environ.pop('LIBHDFS3_CONF', None)
 
 
 @pytest.yield_fixture()
 def simple_conf_file(no_conf):
-    d = tempfile.mkdtemp()
+    d = str(tempfile.mkdtemp())
     fn = os.path.join(d, 'hdfs-site.xml')
     with open(fn, 'w') as fout:
         fout.write(example_conf)
