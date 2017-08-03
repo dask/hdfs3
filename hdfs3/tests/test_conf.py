@@ -46,6 +46,20 @@ def test_no_conf(no_conf):
         assert conf['port'] is not None
 
 
+def test_simple_pars(no_conf):
+    hdfs = HDFileSystem(autoconf=True, connect=False)
+    assert hdfs.conf['host'] == conf_defaults['host']
+    assert hdfs.conf['port'] == conf_defaults['port']
+    with pytest.raises(Exception):
+        hdfs = HDFileSystem(autoconf=False, connect=True)
+    hdfs = HDFileSystem(host='blah', autoconf=True, connect=False)
+    assert hdfs.conf['host'] == 'blah'
+    hdfs = HDFileSystem(connect=False, pars={'port': 1})
+    assert hdfs.conf['port'] == 1
+    hdfs = HDFileSystem(connect=False, pars={'port': 1}, port=2)
+    assert hdfs.conf['port'] == 2
+
+
 def test_with_libhdfs3_conf(simple_conf_file):
     os.environ['LIBHDFS3_CONF'] = simple_conf_file
     guess_config()

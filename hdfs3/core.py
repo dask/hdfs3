@@ -8,7 +8,6 @@ import os
 import re
 import warnings
 from collections import deque
-from .lib import _lib
 
 
 from .compatibility import FileNotFoundError, ConnectionError, PY3
@@ -17,6 +16,7 @@ from .utils import (read_block, seek_delimiter, ensure_bytes, ensure_string,
                     ensure_trailing_slash)
 
 logger = logging.getLogger(__name__)
+_lib = None
 
 
 class HDFileSystem(object):
@@ -78,11 +78,13 @@ class HDFileSystem(object):
         self._handle = None
         self.connect()
 
+
     def connect(self):
         """ Connect to the name node
 
         This happens automatically at startup
         """
+        get_lib()
         conf = self.conf.copy()
         if self._handle:
             return
@@ -484,6 +486,14 @@ class HDFileSystem(object):
                 length = size - offset
             bytes = read_block(f, offset, length, delimiter)
         return bytes
+
+
+def get_lib():
+    """ Import C-lib only on demand """
+    global _lib
+    if _lib is None:
+        from .lib import _lib as l
+        _lib = l
 
 
 def struct_to_dict(s):
