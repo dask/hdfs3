@@ -167,3 +167,7 @@ def tmpfile(extension=''):
                 os.remove(filename)
             except OSError:  # sometimes we can't remove a generated temp file
                 pass
+
+
+class MyNone(object):
+    """ A do-nothing class to see if parameter was passed """

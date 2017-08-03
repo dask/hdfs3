@@ -13,7 +13,7 @@ from collections import deque
 from .compatibility import FileNotFoundError, ConnectionError, PY3
 from .conf import conf
 from .utils import (read_block, seek_delimiter, ensure_bytes, ensure_string,
-                    ensure_trailing_slash)
+                    ensure_trailing_slash, MyNone)
 
 logger = logging.getLogger(__name__)
 _lib = None
@@ -26,10 +26,14 @@ class HDFileSystem(object):
     """
     _first_pid = None
 
-    def __init__(self, connect=True, autoconf=True, pars=None, **kwargs):
+    def __init__(self, host=MyNone, port=MyNone, connect=True, autoconf=True,
+                 pars=None, **kwargs):
         """
         Parameters
         ----------
+        host: str; port: int
+            Overrides which take precedence over information in conf files and
+            other passed parameters
         connect: bool (True)
             Whether to automatically attempt to establish a connection to the
             name-node.
@@ -57,6 +61,10 @@ class HDFileSystem(object):
         if pars:
             self.conf.update(pars)
         self.conf.update(kwargs)
+        if host is not MyNone:
+            self.conf['host'] = host
+        if port is not MyNone:
+            self.conf['port'] = port
 
         self._handle = None
 

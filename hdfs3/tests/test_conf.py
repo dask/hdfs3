@@ -47,11 +47,21 @@ def test_no_conf(no_conf):
 
 
 def test_simple_pars(no_conf):
+    hdfs = HDFileSystem('blah', 1, autoconf=False, connect=False)
+    assert hdfs.conf['host'] == 'blah'
+    assert hdfs.conf['port'] == 1
+    hdfs = HDFileSystem('blah', 1, autoconf=True, connect=False)
+    assert hdfs.conf['host'] == 'blah'
+    assert hdfs.conf['port'] == 1
+    hdfs = HDFileSystem('blah', 1, autoconf=True, connect=False,
+                        pars={'port': 2})
+    assert hdfs.conf['port'] == 1
+
     hdfs = HDFileSystem(autoconf=True, connect=False)
     assert hdfs.conf['host'] == conf_defaults['host']
     assert hdfs.conf['port'] == conf_defaults['port']
     with pytest.raises(Exception):
-        hdfs = HDFileSystem(autoconf=False, connect=True)
+        HDFileSystem(autoconf=False, connect=True)
     hdfs = HDFileSystem(host='blah', autoconf=True, connect=False)
     assert hdfs.conf['host'] == 'blah'
     hdfs = HDFileSystem(connect=False, pars={'port': 1})
