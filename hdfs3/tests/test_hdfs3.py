@@ -55,34 +55,6 @@ def test_simple(hdfs):
         assert out == data
 
 
-def test_no_conf():
-    os.environ.pop('HADOOP_CONF_DIR', '')
-    os.environ.pop('HADOOP_INSTALL', '')
-    os.environ.pop('LIBHDFS3_CONF', '')
-    guess_config()
-    if 'host' in conf:
-        assert conf['host'] is not None
-    if 'port' in conf:
-        assert conf['port'] is not None
-
-
-def test_default_port_and_host():
-    hdfs = HDFileSystem(connect=False)
-    assert hdfs.host == conf_defaults['host']
-    assert hdfs.port == conf_defaults['port']
-
-
-def test_token_and_ticket_cache_in_same_time():
-    ticket_cache = "/tmp/krb5cc_0"
-    token = "abc"
-
-    with pytest.raises(RuntimeError) as ctx:
-        HDFileSystem(connect=False, ticket_cache=ticket_cache, token=token)
-
-    msg = "It is not possible to use ticket_cache and token at same time"
-    assert msg in str(ctx.value)
-
-
 @pytest.mark.slow
 def test_connection_error():
     with pytest.raises(ConnectionError) as ctx:
@@ -94,6 +66,7 @@ def test_connection_error():
     # that important part of error is present
     msg = 'Caused by: HdfsNetworkConnectException: Connect to "localhost:9999"'
     assert msg in str(ctx.value)
+
 
 def test_idempotent_connect(hdfs):
     hdfs.connect()

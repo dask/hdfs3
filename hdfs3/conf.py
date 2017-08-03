@@ -10,9 +10,19 @@ conf_defaults = {'host': 'localhost', 'port': 8020}
 conf = conf_defaults.copy()
 
 
-def hdfs_conf(confd):
-    """ Load HDFS config from default locations. """
-    files = 'core-site.xml', 'hdfs-site.xml'
+def hdfs_conf(confd, more_files=None):
+    """ Load HDFS config from default locations. 
+    
+    Parameters
+    ----------
+    confd: str
+        Directory location to search in
+    more_files: list of str or None
+        If given, additional filenames to query
+    """
+    files = ['core-site.xml', 'hdfs-site.xml']
+    if more_files:
+        files.extend(more_files)
     c = {}
     for afile in files:
         try:
@@ -33,6 +43,7 @@ def hdfs_conf(confd):
             c['port'] = int(port[0])
     if 'dfs.namenode.rpc-address' in c:
         # name node address
+        text = c['dfs.namenode.rpc-address']
         host = text.split(':', 1)[0]
         port = text.split(':', 1)[1:]
         if host:
@@ -76,7 +87,8 @@ def guess_config():
     """ Look for config files in common places """
     d = None
     if 'LIBHDFS3_CONF' in os.environ:
-        hdfs_conf(os.path.dirname(os.environ['LIBHDFS3_CONF']))
+        fdir, fn = os.path.split(os.environ['LIBHDFS3_CONF'])
+        hdfs_conf(fdir, more_files=[fn])
         return
     elif 'HADOOP_CONF_DIR' in os.environ:
         d = os.environ['HADOOP_CONF_DIR']
