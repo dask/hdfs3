@@ -16,8 +16,8 @@ import traceback
 import pytest
 
 from hdfs3 import HDFileSystem, lib
-from hdfs3.core import conf_to_dict, ensure_bytes, ensure_string, hdfs_conf
-from hdfs3.core import DEFAULT_HOST, DEFAULT_PORT
+from hdfs3.utils import ensure_bytes, ensure_string
+from hdfs3.conf import conf_to_dict, conf, conf_defaults, guess_config
 from hdfs3.compatibility import bytes, unicode, ConnectionError
 from hdfs3.utils import tmpfile
 
@@ -57,31 +57,6 @@ def test_simple(hdfs):
         assert len(data) == len(out)
         assert out == data
 
-def test_no_conf():
-    os.environ.pop('HADOOP_CONF_DIR', '')
-    os.environ.pop('HADOOP_INSTALL', '')
-    conf = hdfs_conf()
-    if 'host' in conf:
-        assert conf['host'] is not None
-    if 'port' in conf:
-        assert conf['port'] is not None
-
-def test_default_port_and_host():
-    hdfs = HDFileSystem(connect=False)
-    assert hdfs.host == DEFAULT_HOST
-    assert hdfs.port == DEFAULT_PORT
-
-
-def test_token_and_ticket_cache_in_same_time():
-    ticket_cache = "/tmp/krb5cc_0"
-    token = "abc"
-
-    with pytest.raises(RuntimeError) as ctx:
-        HDFileSystem(connect=False, ticket_cache=ticket_cache, token=token)
-
-    msg = "It is not possible to use ticket_cache and token in same time"
-    assert msg in str(ctx.value)
-
 
 @pytest.mark.slow
 def test_connection_error():
@@ -94,6 +69,7 @@ def test_connection_error():
     # that important part of error is present
     msg = 'Caused by: HdfsNetworkConnectException: Connect to "localhost:9999"'
     assert msg in str(ctx.value)
+
 
 def test_idempotent_connect(hdfs):
     hdfs.connect()
