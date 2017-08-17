@@ -564,6 +564,7 @@ return the new expiration time"""
 
 hdfsCancelDelegationToken = _lib.hdfsCancelDelegationToken
 hdfsCancelDelegationToken.argtypes = [ct.POINTER(hdfsFS), ct.c_char_p]
+hdfsCancelDelegationToken.restype = ct.c_int
 hdfsCancelDelegationToken.__doc__ = """Cancel a delegation token.
 
 param fs The file system.
