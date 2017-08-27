@@ -111,5 +111,4 @@ def guess_config():
     if os.path.exists(os.path.join(d, 'hdfs-site.xml')):
         os.environ['LIBHDFS3_CONF'] = os.path.join(d, 'hdfs-site.xml')
 
-
 guess_config()
