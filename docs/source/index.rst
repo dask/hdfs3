@@ -52,7 +52,7 @@ default JVM client for the following reasons:
 Related Work
 ------------
 
-* libhdfs3_: The underlying C++ library
+* libhdfs3_: The underlying C++ library from Apache HAWQ
 * snakebite_: Another Python HDFS library using Protobufs
 * Dask_: Parent project, a parallel computing library in Python
 * Dask.distributed_: Distributed computing in Python
@@ -69,7 +69,7 @@ Related Work
    limitations
 
 .. _`Hadoop File System`: https://en.wikipedia.org/wiki/Apache_Hadoop
-.. _libhdfs3: https://github.com/Pivotal-Data-Attic/pivotalrd-libhdfs3
+.. _libhdfs3: https://github.com/martindurant/libhdfs3-downstream
 .. _snakebite: https://snakebite.readthedocs.io/en/latest/
 .. _Dask: http://dask.pydata.org/en/latest/
 .. _Dask.distributed: https://distributed.readthedocs.io/en/latest/
