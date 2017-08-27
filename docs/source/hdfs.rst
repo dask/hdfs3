@@ -4,9 +4,24 @@ HDFS Configuration
 Defaults
 --------
 
-This library tries to find ``core-site.xml`` and ``hdfs-site.xml`` in typical
-locations and reads default configuration parameters from there.  They may also
-be specified manually when constructing the ``HDFileSystem`` object.
+Several methods are available for configuring HDFS3.
+
+The simplest is to load values from ``core-site.xml`` and ``hdfs-site.xml`` files.
+HDFS3 will search typical locations and reads default configuration parameters from there.  
+The file locations may also be specified with the environment variables ``HADOOP_CONF_DIR``,
+which is the directory containing the XLM files, ``HADOOP_INSTALL``, in which case the 
+files are expected in subdirectory ``hadoop/conf/`` or ``LIBHDFS3_CONF``, which should
+explicitly point to the ``hdfs-site.xml`` file you wish to use.
+
+It is also possible to pass parameters to HDFS3 when instantiating the file system. You
+can either provide individual common overrides (e.g., ``host='myhost'``) or provide
+a whole configuration as a dictionary (``pars={}``) with the same key names as typically
+contained in the XML config files. These parameters will take precedence over any loaded
+from files, or you can disable using the default configuration at all with ``autoconf=False``.
+
+The special environment variable ``LIBHDFS3_CONF`` will be automatically set when parsing
+the config files, if possible. Since the library is only loaded upon the first instantiation
+of a HDFileSystem, you still have the option to change its value in ``os.environ``.
 
 Short-circuit reads in HDFS
 ---------------------------
@@ -16,12 +31,8 @@ process that runs on the same node as the data can bypass or `short-circuit`
 the communication path through the datanode and instead read directly from a
 file.
 
-HDFS and ``hdfs3`` can be configured for short-circuit reads using the
-following two steps:
-
-* Set the ``LIBHDFS3_CONF`` environment variable to the location of the
-  ``hdfs-site.xml`` configuration file (e.g.,
-  ``export LIBHDFS3_CONF=/etc/hadoop/conf/hdfs-site.xml``).
+HDFS and ``hdfs3`` can be configured for short-circuit reads. The easiest method is
+to edit the ``hdfs-site.xml`` file whose location you specify as above.
 
 * Configure the appropriate settings in ``hdfs-site.xml`` on all of the HDFS nodes:
 
@@ -59,11 +70,9 @@ over in the event of failure. A good description han be found `here`_.
 
 .. _`Cloudera and HDFS HA`: https://www.cloudera.com/documentation/enterprise/5-8-x/topics/cdh_hag_hdfs_ha_intro.html#topic_2_1
 
-In the case of libhdfs3, the library used by hdfs3, the configuration
+In the case of `libhdfs3`_, the library used by hdfs3, the configuration
 required for HA can be passed to the client directly in python code, or
-included in configuration files. The parameters required are detailed in
-the `libhdfs3 documentation`_. The environment variable ``LIBHDFS3_CONF``
-can be used to point the client to the appropriate preference file.
+included in configuration files, as with any other configuration options.
 
 .. _`libhdfs HA documentation`: https://github.com/Pivotal-Data-Attic/pivotalrd-libhdfs3/wiki/Configure-Parameters
 
@@ -82,4 +91,5 @@ In python code, this could look like the following:
     }
     fs = HDFileSystem(host=host, pars=conf)
 
-Note that no ``port`` is specified (requires hdfs version 0.1.3)
+Note that no ``port`` is specified (requires hdfs version 0.1.3), it's value should be ``None``.
+

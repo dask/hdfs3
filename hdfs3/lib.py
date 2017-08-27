@@ -9,23 +9,25 @@ import ctypes as ct
 
 PY3 = sys.version_info.major > 2
 
-
-try:
-    _lib = ct.cdll.LoadLibrary('libhdfs3.so')
-except OSError:
+_lib = None
+for name in ['libhdfs3.so', 'libhdfs3.dylib']:
     try:
-        import os
-        env = os.path.dirname(os.path.dirname(sys.executable))
-        _lib = ct.cdll.LoadLibrary(os.path.join(env, 'lib', 'libhdfs3.so'))
+        _lib = ct.cdll.LoadLibrary(name)
     except OSError:
-        raise ImportError("Can not find the shared library: libhdfs3.so\n"
-                "See installation instructions at "
-                "http://hdfs3.readthedocs.io/en/latest/install.html")
+        pass
+        # import os
+        # env = os.path.dirname(os.path.dirname(sys.executable))
+        # _lib = ct.cdll.LoadLibrary(os.path.join(env, 'lib', 'libhdfs3.so'))
+if _lib is None:
+    raise ImportError("Can not find the shared library: libhdfs3.so\n"
+                      "See installation instructions at "
+                      "http://hdfs3.readthedocs.io/en/latest/install.html")
 
 tSize = ct.c_int32
 tTime = ct.c_int64
 tOffset = ct.c_int64
 tPort = ct.c_uint16
+
 
 class BlockLocation(ct.Structure):
     _fields_ = [('corrupt', ct.c_int),
@@ -35,6 +37,25 @@ class BlockLocation(ct.Structure):
                 ('topologyPaths', ct.POINTER(ct.c_char_p)),
                 ('length', ct.c_int64),
                 ('offset', ct.c_int64)]
+
+
+class EncryptionFileInfo(ct.Structure):
+    _fields_ = [('suite', ct.c_int),
+                ('protocol_version', ct.c_int),
+                ('key', ct.c_char_p),
+                ('key_name', ct.c_char_p),
+                ('mIv', ct.c_char_p),
+                ('zone_key_version_name', ct.c_char_p)]
+
+
+class EncryptionZoneInfo(ct.Structure):
+    _fileds_ = [('suite', ct.c_int),
+                ('protocol_version', ct.c_int),
+                ('mId', ct.c_int64),
+                ('path', ct.c_char_p),
+                ('key_name', ct.c_char_p)]
+
+
 class FileInfo(ct.Structure):
     _fields_ = [('kind', ct.c_int8),
                 ('name', ct.c_char_p),
@@ -46,7 +67,8 @@ class FileInfo(ct.Structure):
                 ('group', ct.c_char_p),
                 ('permissions', ct.c_short),  #view as octal
                 ('last_access', ct.c_int64),  #time_t, could be 32bit
-                ]
+                ('encryption_info', ct.POINTER(EncryptionFileInfo))]
+
 hdfsGetPathInfo = _lib.hdfsGetPathInfo
 hdfsGetPathInfo.argtypes = [ct.c_char_p]
 hdfsGetPathInfo.restype = ct.POINTER(FileInfo)
@@ -59,11 +81,14 @@ param path The path of the file.
 return Returns a dynamically-allocated hdfsFileInfo object;
 NULL on error."""
 
+
 class hdfsBuilder(ct.Structure):
     pass
 
+
 class hdfsFile(ct.Structure):
     _fields_ = [('input', ct.c_bool), ('stream', ct.c_void_p)]
+
 
 class hdfsFS(ct.Structure):
     _fields_ = [('filesystem', ct.c_void_p)]  # TODO: expand this if needed
@@ -136,7 +161,7 @@ deprecated Use hdfsBuilderConnect instead."""
 hdfsConnectNewInstance = _lib.hdfsConnectNewInstance
 hdfsConnectNewInstance.argtypes = [ct.c_char_p, tPort]
 hdfsConnectNewInstance.restype = ct.POINTER(hdfsFS)
-hdfsConnectNewInstance.__doc__ = "Connect to a hdfs file system"
+hdfsConnectNewInstance.__doc__ = "New structure for connection information"
 
 hdfsBuilderConnect = _lib.hdfsBuilderConnect
 hdfsBuilderConnect.argtypes = [ct.POINTER(hdfsBuilder)]
@@ -380,6 +405,23 @@ param dstFS The handle to destination filesystem.
 param dst The path of destination file.
 return Returns 0 on success, -1 on error."""
 
+hdfsConcat = _lib.hdfsConcat
+hdfsConcat.argtypes = [ct.POINTER(hdfsFS), ct.c_char_p,
+                       ct.POINTER(ct.c_char_p)]
+hdfsConcat.__doc__ = """Concatenate (move) the blocks in a list of source
+files into a single file deleting the source files.  
+
+Source files must all have the same block size and replication and all
+but the last source file must be an integer number of full
+blocks long.  The source files are deleted on successful
+completion.
+
+param fs The configured filesystem handle.
+param trg The path of target (resulting) file
+param scrs A list of paths to source files
+return Returns 0 on success, -1 on error.
+"""
+
 hdfsDelete = _lib.hdfsDelete
 hdfsDelete.argtypes = [ct.POINTER(hdfsFS), ct.c_char_p, ct.c_int]
 hdfsDelete.__doc__ = """Delete file.
@@ -431,6 +473,19 @@ param fs The configured filesystem handle.
 param path The path of the directory.
 return Returns 0 on success, -1 on error."""
 
+hdfsCreateDirectoryEx = _lib.hdfsCreateDirectoryEx
+hdfsCreateDirectoryEx.argtypes = [ct.POINTER(hdfsFS), ct.c_char_p,
+                                  ct.c_short, ct.c_int]
+hdfsCreateDirectoryEx.restype = ct.c_int
+hdfsCreateDirectoryEx.__doc__ = """Make the given file with extended options
+
+param fs The configured filesystem handle.
+param path The path of the directory.
+param mode The permissions for created file and directories.
+param createParents Controls whether to create all non-existent parent directories or not
+return Returns 0 on success, -1 on error."""
+
+
 hdfsSetReplication = _lib.hdfsSetReplication
 hdfsSetReplication.argtypes = [ct.POINTER(hdfsFS), ct.c_char_p, ct.c_int16]
 hdfsSetReplication.__doc__ = """Set the replication of the specified
@@ -464,6 +519,16 @@ param fs The configured filesystem handle.
 param path The path of the file.
 return Returns a dynamically-allocated hdfsFileInfo object;
 NULL on error."""
+
+hdfsFreeEncryptionZoneInfo = _lib.hdfsFreeEncryptionZoneInfo
+hdfsFreeEncryptionZoneInfo.argtypes = [ct.POINTER(EncryptionZoneInfo), ct.c_int]
+hdfsFreeEncryptionZoneInfo.restype = None
+hdfsFreeEncryptionZoneInfo.__doc__ = """Free up the hdfsEncryptionZoneInfo array
+
+param infos The array of dynamically-allocated hdfsEncryptionZoneInfo objects.
+param numEntries The size of the array.
+"""
+
 
 hdfsFreeFileInfo = _lib.hdfsFreeFileInfo
 hdfsFreeFileInfo.argtypes = [ct.POINTER(FileInfo), ct.c_int]
@@ -578,3 +643,22 @@ hdfsFreeFileBlockLocations.__doc__ = """Free the BlockLocation array returned by
 
 param locations The array returned by hdfsGetFileBlockLocations
 param numOfBlock The number of elements in the locations"""
+
+hdfsListEncryptionZones = _lib.hdfsListEncryptionZones
+hdfsListEncryptionZones.argtypes = [ct.POINTER(hdfsFS), ct.POINTER(ct.c_int)]
+hdfsListEncryptionZones.restype = ct.POINTER(EncryptionZoneInfo)
+hdfsListEncryptionZones.__doc__ = """Get list of all the encryption zones.
+
+param fs The configured filesystem handle.
+return Returns a dynamically-allocated array of hdfsEncryptionZoneInfo objects;
+NULL on error."""
+
+hdfsCreateEncryptionZone = _lib.hdfsCreateEncryptionZone
+hdfsCreateEncryptionZone.argtypes = [ct.POINTER(hdfsFS), ct.c_char_p, ct.c_char_p]
+hdfsCreateEncryptionZone.restype = ct.c_int
+hdfsCreateEncryptionZone.__doc__ = """Create encryption zone for the directory
+
+param fs The configured filesystem handle.
+param path The path of the directory.
+param keyname The key name of the encryption zone 
+return Returns 0 on success, -1 on error."""
