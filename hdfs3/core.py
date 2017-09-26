@@ -122,6 +122,9 @@ class HDFileSystem(object):
             _lib.hdfsBuilderSetToken(o, ensure_bytes(conf.pop('token')))
 
         for par, val in conf.items():
+            if par in ['port', 'user', 'ticket_cache', 'token']:
+                continue
+
             if not _lib.hdfsBuilderConfSetStr(o, ensure_bytes(par),
                                               ensure_bytes(val)) == 0:
                 warnings.warn('Setting conf parameter %s failed' % par)
