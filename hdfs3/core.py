@@ -107,19 +107,24 @@ class HDFileSystem(object):
                           RuntimeWarning, stacklevel=2)
 
         o = _lib.hdfsNewBuilder()
-        if conf['port'] is not None:
-            _lib.hdfsBuilderSetNameNodePort(o, conf.pop('port'))
+
         _lib.hdfsBuilderSetNameNode(o, ensure_bytes(conf.pop('host')))
-        if 'user' in conf:
-            _lib.hdfsBuilderSetUserName(
-                o, ensure_bytes(conf.pop('user')))
+        
+        port = conf.pop('port', None)
+        if port is not None:
+            _lib.hdfsBuilderSetNameNodePort(o, port)
 
-        if 'ticket_cache' in conf:
-            _lib.hdfsBuilderSetKerbTicketCachePath(
-                o, ensure_bytes(conf.pop('ticket_cache')))
+        user = conf.pop('user', None)
+        if user is not None:
+            _lib.hdfsBuilderSetUserName(o, ensure_bytes(user))
 
-        if 'token' in conf:
-            _lib.hdfsBuilderSetToken(o, ensure_bytes(conf.pop('token')))
+        ticket_cache = conf.pop('ticket_cache', None)
+        if ticket_cache is not None:
+            _lib.hdfsBuilderSetKerbTicketCachePath(o, ensure_bytes(ticket_cache))
+
+        token = conf.pop('token', None)
+        if token is not None:
+            _lib.hdfsBuilderSetToken(o, ensure_bytes(token))
 
         for par, val in conf.items():
             if not _lib.hdfsBuilderConfSetStr(o, ensure_bytes(par),
