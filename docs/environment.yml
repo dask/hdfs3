@@ -1,6 +1,6 @@
 name: hdfs3-docs
 channels:
-    - dask
+    - conda-forge
 dependencies:
     - python
     - hdfs3
