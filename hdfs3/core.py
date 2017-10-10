@@ -216,6 +216,8 @@ class HDFileSystem(object):
             One of 'rb', 'wb', or 'ab'
         replication: int
             Replication factor; if zero, use system default (only on write)
+        buf: int (=0)
+            Client buffer size (bytes); if 0, use default.
         block_size: int
             Size of data-node blocks if writing
         """
@@ -224,14 +226,14 @@ class HDFileSystem(object):
         if block_size and mode != 'wb':
             raise ValueError('Block size only valid when writing new file')
         if ('a' in mode and self.exists(path) and
-            replication !=0 and replication > 1):
+                replication != 0 and replication > 1):
             raise IOError("Appending to an existing file with replication > 1"
-                    " is unsupported")
+                          " is unsupported")
         if 'b' not in mode:
             raise NotImplementedError("Text mode not supported, use mode='%s'"
-                    " and manage bytes" % (mode + 'b'))
+                                      " and manage bytes" % (mode + 'b'))
         return HDFile(self, path, mode, replication=replication, buff=buff,
-                block_size=block_size)
+                      block_size=block_size)
 
     def du(self, path, total=False, deep=False):
         """Returns file sizes on a path.
