@@ -13,11 +13,9 @@ _lib = None
 for name in ['libhdfs3.so', 'libhdfs3.dylib']:
     try:
         _lib = ct.cdll.LoadLibrary(name)
-    except OSError:
-        pass
-        # import os
-        # env = os.path.dirname(os.path.dirname(sys.executable))
-        # _lib = ct.cdll.LoadLibrary(os.path.join(env, 'lib', 'libhdfs3.so'))
+    except OSError as e:
+        if not e.args or "image not found" not in str(e.args[0]):
+            raise
 if _lib is None:
     raise ImportError("Can not find the shared library: libhdfs3.so\n"
                       "See installation instructions at "

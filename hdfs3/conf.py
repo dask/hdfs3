@@ -34,7 +34,9 @@ def hdfs_conf(confd, more_files=None):
         return
     if 'fs.defaultFS' in c and c['fs.defaultFS'].startswith('hdfs'):
         # default FS in 'core'
-        text = c['fs.defaultFS'].strip('hdfs://')
+        text = c['fs.defaultFS']
+        if text.startswith('hdfs://'):
+            text = text[7:]
         host = text.split(':', 1)[0]
         port = text.split(':', 1)[1:]
         if host:
