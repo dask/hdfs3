@@ -33,7 +33,7 @@ Build from Source
 
 See the `libhdfs3 installation instructions`_ to install the compiled library.
 
-.. _`libhdfs3 installation instructions`: https://github.com/Pivotal-Data-Attic/pivotalrd-libhdfs3#installation
+.. _`libhdfs3 installation instructions`: https://github.com/ContinuumIO/libhdfs3-downstream/tree/master/libhdfs3
 
 You can download the ``hdfs3`` Python wrapper library from github and install
 normally::
