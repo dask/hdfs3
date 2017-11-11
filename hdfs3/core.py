@@ -291,6 +291,22 @@ class HDFileSystem(object):
         _lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
         return ensure_string(out)
 
+    def isdir(self, path):
+        """Return True if path refers to an existing directory."""
+        try:
+            info = self.info(path)
+            return info['kind'] == 'directory'
+        except OSError:
+            return False
+
+    def isfile(self, path):
+        """Return True if path refers to an existing file."""
+        try:
+            info = self.info(path)
+            return info['kind'] == 'file'
+        except OSError:
+            return False
+
     def walk(self, path):
         """ Get all file entries below given path """
         return ([ensure_trailing_slash(ensure_string(path), False)]
