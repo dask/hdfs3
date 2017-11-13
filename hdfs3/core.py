@@ -296,7 +296,7 @@ class HDFileSystem(object):
         try:
             info = self.info(path)
             return info['kind'] == 'directory'
-        except OSError:
+        except EnvironmentError:
             return False
 
     def isfile(self, path):
@@ -304,7 +304,7 @@ class HDFileSystem(object):
         try:
             info = self.info(path)
             return info['kind'] == 'file'
-        except OSError:
+        except EnvironmentError:
             return False
 
     def walk(self, path):
