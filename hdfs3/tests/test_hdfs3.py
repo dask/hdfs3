@@ -300,6 +300,25 @@ def test_info(hdfs):
     assert hdfs.info('/')['kind'] == 'directory'
 
 
+def test_isdir_isfile(hdfs):
+    fn = '/tmp/test/a'
+    dir = '/tmp/test'
+    missing = '/tmp/not_a_real_path'
+
+    with hdfs.open(fn, 'wb', replication=1) as f:
+        f.write('a' * 5)
+
+    # isdir
+    assert hdfs.isdir(dir)
+    assert not hdfs.isdir(fn)
+    assert not hdfs.isdir(missing)
+
+    # isfile
+    assert hdfs.isfile(fn)
+    assert not hdfs.isfile(dir)
+    assert not hdfs.isfile(missing)
+
+
 def test_df(hdfs):
     with hdfs.open(a, 'wb', replication=1) as f:
         f.write('a' * 10)
