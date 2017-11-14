@@ -1,7 +1,11 @@
+# flake8: noqa
 import sys
 
-if sys.version_info < (3,):
+PY3 = sys.version_info.major == 3
+PY2 = not PY3
 
+
+if PY2:
     class ConnectionError(OSError):
         """Connection to HDFS failed."""
 
@@ -10,7 +14,7 @@ if sys.version_info < (3,):
     from urlparse import urlparse
     unicode = unicode
     bytes = str
-    PY3 = False
+
 else:
     ConnectionError = ConnectionError
     PermissionError = PermissionError
@@ -18,5 +22,3 @@ else:
     from urllib.parse import urlparse
     unicode = str
     bytes = bytes
-    PY3 = True
-

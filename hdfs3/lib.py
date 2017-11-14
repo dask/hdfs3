@@ -15,8 +15,8 @@ for name in ['libhdfs3.so', 'libhdfs3.dylib']:
         _lib = ct.cdll.LoadLibrary(name)
         break
     except OSError as e:
-        if not e.args or ("image not found" not in str(e.args[0])
-                          and "No such file" not in str(e)):
+        if not e.args or ("image not found" not in str(e.args[0]) and
+                          "No such file" not in str(e)):
             raise
 if _lib is None:
     raise ImportError("Can not find the shared library: libhdfs3.so\n"
@@ -59,15 +59,16 @@ class EncryptionZoneInfo(ct.Structure):
 class FileInfo(ct.Structure):
     _fields_ = [('kind', ct.c_int8),
                 ('name', ct.c_char_p),
-                ('last_mod', ct.c_int64),  #time_t, could be 32bit
+                ('last_mod', ct.c_int64),  # time_t, could be 32bit
                 ('size', ct.c_int64),
                 ('replication', ct.c_short),
                 ('block_size', ct.c_int64),
                 ('owner', ct.c_char_p),
                 ('group', ct.c_char_p),
-                ('permissions', ct.c_short),  #view as octal
-                ('last_access', ct.c_int64),  #time_t, could be 32bit
+                ('permissions', ct.c_short),  # view as octal
+                ('last_access', ct.c_int64),  # time_t, could be 32bit
                 ('encryption_info', ct.POINTER(EncryptionFileInfo))]
+
 
 hdfsGetPathInfo = _lib.hdfsGetPathInfo
 hdfsGetPathInfo.argtypes = [ct.c_char_p]
@@ -92,6 +93,7 @@ class hdfsFile(ct.Structure):
 
 class hdfsFS(ct.Structure):
     _fields_ = [('filesystem', ct.c_void_p)]  # TODO: expand this if needed
+
 
 hdfsGetFileBlockLocations = _lib.hdfsGetFileBlockLocations
 hdfsGetFileBlockLocations.argtypes = [ct.POINTER(hdfsFS), ct.c_char_p,
@@ -279,8 +281,11 @@ hdfsOpenFile.__doc__ = """Open a hdfs file in given mode.
 Open a hdfs file in given mode.
 param fs The configured filesystem handle.
 param path The full path to the file.
-param flags - an | of bits/fcntl.h file flags - supported flags are O_RDONLY, O_WRONLY (meaning create or overwrite i.e., implies O_TRUNCAT),
- O_WRONLY|O_APPEND and O_SYNC. Other flags are generally ignored other than (O_RDWR || (O_EXCL & O_CREAT)) which return NULL and set errno equal ENOTSUP.
+param flags An | of bits/fcntl.h file flags. Supported flags are O_RDONLY,
+            O_WRONLY (meaning create or overwrite i.e., implies O_TRUNCAT),
+            O_WRONLY|O_APPEND and O_SYNC. Other flags are generally ignored
+            other than (O_RDWR || (O_EXCL & O_CREAT)) which return NULL and
+            set errno equal ENOTSUP.
 param bufferSize Size of buffer for read/write - pass 0 if you want
  to use the default configured values.
 param replication Block replication - pass 0 if you want to use
@@ -348,7 +353,7 @@ return      On success, a positive number indicating how many bytes
 
 hdfsWrite = _lib.hdfsWrite
 hdfsWrite.argtypes = [ct.POINTER(hdfsFS), ct.POINTER(hdfsFile), ct.c_void_p,
-                     tSize]
+                      tSize]
 hdfsWrite.restype = tSize
 hdfsWrite.__doc__ = """Write data into an open file.
 
@@ -409,7 +414,7 @@ hdfsConcat = _lib.hdfsConcat
 hdfsConcat.argtypes = [ct.POINTER(hdfsFS), ct.c_char_p,
                        ct.POINTER(ct.c_char_p)]
 hdfsConcat.__doc__ = """Concatenate (move) the blocks in a list of source
-files into a single file deleting the source files.  
+files into a single file deleting the source files.
 
 Source files must all have the same block size and replication and all
 but the last source file must be an integer number of full
@@ -660,5 +665,5 @@ hdfsCreateEncryptionZone.__doc__ = """Create encryption zone for the directory
 
 param fs The configured filesystem handle.
 param path The path of the directory.
-param keyname The key name of the encryption zone 
+param keyname The key name of the encryption zone
 return Returns 0 on success, -1 on error."""

@@ -11,8 +11,8 @@ conf = conf_defaults.copy()
 
 
 def hdfs_conf(confd, more_files=None):
-    """ Load HDFS config from default locations. 
-    
+    """ Load HDFS config from default locations.
+
     Parameters
     ----------
     confd: str
@@ -112,5 +112,6 @@ def guess_config():
     hdfs_conf(d)
     if os.path.exists(os.path.join(d, 'hdfs-site.xml')):
         os.environ['LIBHDFS3_CONF'] = os.path.join(d, 'hdfs-site.xml')
+
 
 guess_config()

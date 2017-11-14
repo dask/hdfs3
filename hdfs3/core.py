@@ -10,7 +10,7 @@ import warnings
 import posixpath
 from collections import deque
 
-from .compatibility import FileNotFoundError, ConnectionError, PY3
+from .compatibility import FileNotFoundError, ConnectionError
 from .conf import conf
 from .utils import (read_block, seek_delimiter, ensure_bytes, ensure_string,
                     ensure_trailing_slash, MyNone)
@@ -68,7 +68,7 @@ class HDFileSystem(object):
 
         self._handle = None
 
-        if self.conf.get('ticket_cache', None) and self.conf.get('token', None):
+        if self.conf.get('ticket_cache') and self.conf.get('token'):
             m = "It is not possible to use ticket_cache and token at same time"
             raise RuntimeError(m)
 
@@ -85,7 +85,6 @@ class HDFileSystem(object):
         self.__dict__.update(state)
         self._handle = None
         self.connect()
-
 
     def connect(self):
         """ Connect to the name node
@@ -110,7 +109,7 @@ class HDFileSystem(object):
         o = _lib.hdfsNewBuilder()
 
         _lib.hdfsBuilderSetNameNode(o, ensure_bytes(conf.pop('host')))
-        
+
         port = conf.pop('port', None)
         if port is not None:
             _lib.hdfsBuilderSetNameNodePort(o, port)
@@ -163,7 +162,7 @@ class HDFileSystem(object):
     def renew_token(self, token=None):
         """
         Renew delegation token
-        
+
         Parameters
         ----------
         token: str or None
@@ -182,7 +181,7 @@ class HDFileSystem(object):
     def cancel_token(self, token=None):
         """
         Revoke delegation token
-        
+
         Parameters
         ----------
         token: str or None
@@ -202,7 +201,8 @@ class HDFileSystem(object):
     def disconnect(self):
         """ Disconnect from name node """
         if self._handle:
-            logger.debug("Disconnect from handle %d", self._handle.contents.filesystem)
+            logger.debug("Disconnect from handle %d",
+                         self._handle.contents.filesystem)
             _lib.hdfsDisconnect(self._handle)
         self._handle = None
 
@@ -261,7 +261,9 @@ class HDFileSystem(object):
         """ Used/free disc space on the HDFS system """
         cap = _lib.hdfsGetCapacity(self._handle)
         used = _lib.hdfsGetUsed(self._handle)
-        return {'capacity': cap, 'used': used, 'percent-free': 100*(cap-used)/cap}
+        return {'capacity': cap,
+                'used': used,
+                'percent-free': 100 * (cap - used) / cap}
 
     def get_block_locations(self, path, start=0, length=0):
         """ Fetch physical locations of blocks """
@@ -270,9 +272,11 @@ class HDFileSystem(object):
         start = int(start) or 0
         length = int(length) or self.info(path)['size']
         nblocks = ctypes.c_int(0)
-        out = _lib.hdfsGetFileBlockLocations(self._handle, ensure_bytes(path),
-                                ctypes.c_int64(start), ctypes.c_int64(length),
-                                ctypes.byref(nblocks))
+        out = _lib.hdfsGetFileBlockLocations(self._handle,
+                                             ensure_bytes(path),
+                                             ctypes.c_int64(start),
+                                             ctypes.c_int64(length),
+                                             ctypes.byref(nblocks))
         locs = []
         for i in range(nblocks.value):
             block = out[i]
@@ -347,20 +351,19 @@ class HDFileSystem(object):
             pass
         if '/' in path[:path.index('*')]:
             ind = path[:path.index('*')].rindex('/')
-            root = path[:ind+1]
+            root = path[:ind + 1]
         else:
             root = '/'
-        allfiles = []
+        allpaths = []
         for dirname, dirs, fils in self.walk(root):
-            allfiles.extend(posixpath.join(dirname, d) for d in dirs)
-            allfiles.extend(posixpath.join(dirname, f) for f in fils)
+            allpaths.extend(posixpath.join(dirname, d) for d in dirs)
+            allpaths.extend(posixpath.join(dirname, f) for f in fils)
         pattern = re.compile("^" + path.replace('//', '/')
                                        .rstrip('/')
                                        .replace('*', '[^/]*')
                                        .replace('?', '.') + "$")
-        out = [f for f in allfiles
-               if pattern.match(f.replace('//', '/').rstrip('/'))]
-        return out
+        return [p for p in allpaths
+                if pattern.match(p.replace('//', '/').rstrip('/'))]
 
     def ls(self, path, detail=False):
         """ List files at path
@@ -440,20 +443,21 @@ class HDFileSystem(object):
         """ Move file at path1 to path2 """
         if not self.exists(path1):
             raise FileNotFoundError(path1)
-        out = _lib.hdfsRename(self._handle, ensure_bytes(path1), ensure_bytes(path2))
+        out = _lib.hdfsRename(self._handle, ensure_bytes(path1),
+                              ensure_bytes(path2))
         return out == 0
 
     def concat(self, destination, paths):
         """Concatenate inputs to destination
-        
+
         Source files *should* all have the same block size and replication.
         The destination file must be in the same directory as
         the source files. If the target exists, it will be appended to.
-        
+
         Some HDFSs impose that the target file must exist and be an exact
         number of blocks long, and that each concated file except the last
         is also a whole number of blocks.
-        
+
         The source files are deleted on successful
         completion.
         """
@@ -478,7 +482,7 @@ class HDFileSystem(object):
 
     def exists(self, path):
         """ Is there an entry at path? """
-        out = _lib.hdfsExists(self._handle, ensure_bytes(path) )
+        out = _lib.hdfsExists(self._handle, ensure_bytes(path))
         return out == 0
 
     def chmod(self, path, mode):
@@ -498,9 +502,14 @@ class HDFileSystem(object):
 
         Examples
         --------
-        >>> hdfs.chmod('/path/to/file', 0o777)  # make read/writeable to all # doctest: +SKIP
-        >>> hdfs.chmod('/path/to/file', 0o700)  # make read/writeable only to user # doctest: +SKIP
-        >>> hdfs.chmod('/path/to/file', 0o100)  # make read-only to user # doctest: +SKIP
+        Make read/writeable to all
+        >>> hdfs.chmod('/path/to/file', 0o777)  # doctest: +SKIP
+
+        Make read/writeable only to user
+        >>> hdfs.chmod('/path/to/file', 0o700)  # doctest: +SKIP
+
+        Make read-only to user
+        >>> hdfs.chmod('/path/to/file', 0o100)  # doctest: +SKIP
         """
         if not self.exists(path):
             raise FileNotFoundError(path)
@@ -514,8 +523,8 @@ class HDFileSystem(object):
         """ Change owner/group """
         if not self.exists(path):
             raise FileNotFoundError(path)
-        out = _lib.hdfsChown(self._handle, ensure_bytes(path), ensure_bytes(owner),
-                            ensure_bytes(group))
+        out = _lib.hdfsChown(self._handle, ensure_bytes(path),
+                             ensure_bytes(owner), ensure_bytes(group))
         if out != 0:
             msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError("chown failed on %s %s" % (path, msg))
@@ -530,7 +539,7 @@ class HDFileSystem(object):
 
     def get(self, hdfs_path, local_path, blocksize=2**16):
         """ Copy HDFS file to local """
-        #TODO: _lib.hdfsCopy() may do this more efficiently
+        # TODO: _lib.hdfsCopy() may do this more efficiently
         if not self.exists(hdfs_path):
             raise FileNotFoundError(hdfs_path)
         with self.open(hdfs_path, 'rb') as f:
@@ -551,15 +560,16 @@ class HDFileSystem(object):
                         out = f.read(blocksize)
                         f2.write(out)
 
-    def put(self, filename, path, chunk=2**16, replication=0,block_size=0):
+    def put(self, filename, path, chunk=2**16, replication=0, block_size=0):
         """ Copy local file to path in HDFS """
-        with self.open(path, 'wb',replication=replication,block_size=block_size) as f:
-            with open(filename, 'rb') as f2:
+        with self.open(path, 'wb', replication=replication,
+                       block_size=block_size) as target:
+            with open(filename, 'rb') as source:
                 while True:
-                    out = f2.read(chunk)
+                    out = source.read(chunk)
                     if len(out) == 0:
                         break
-                    f.write(out)
+                    target.write(out)
 
     def tail(self, path, size=1024):
         """ Return last bytes of file """
@@ -746,10 +756,10 @@ class HDFile(object):
         line-terminator).
 
         Line iteration uses this method internally.
-        
+
         Note: this function requires many calls to HDFS and is slow; it is
         in general better to wrap an HDFile with an ``io.TextIOWrapper`` for
-        buffering, text decoding and newline support. 
+        buffering, text decoding and newline support.
         """
         lineterminator = ensure_bytes(lineterminator)
         start = self.tell()

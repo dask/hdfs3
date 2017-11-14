@@ -32,3 +32,4 @@ install:
 script:
   - pwd
   - docker exec -it $CONTAINER_ID $DOCKER_ENV/bin/py.test hdfs3 -s -vv
+  - docker exec -it $CONTAINER_ID $DOCKER_ENV/bin/flake8 hdfs3

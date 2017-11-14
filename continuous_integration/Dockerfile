@@ -9,10 +9,11 @@ ENV PATH /opt/conda/bin:$PATH
 
 # hdfs3 - python
 ENV LIBHDFS3_CONF /etc/hadoop/conf/hdfs-site.xml
-RUN conda install -y -q ipython pytest
+RUN conda install -y -q ipython pytest flake8 -c conda-forge
 RUN conda install -y -q libhdfs3 -c conda-forge
+
 RUN conda create -y -n py3 python=3.5
-RUN conda install -y -n py3 ipython pytest
+RUN conda install -y -n py3 ipython pytest flake8 -c conda-forge
 RUN conda install -y -n py3 libhdfs3 -c conda-forge
 
 # Cloudera repositories

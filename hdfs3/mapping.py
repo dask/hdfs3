@@ -35,8 +35,8 @@ class HDFSMap(MutableMapping):
             hdfs.mkdir(root)
         if check:
             hdfs.ls(root)
-            hdfs.touch(root+'/a')
-            hdfs.rm(root+'/a')
+            hdfs.touch(root + '/a')
+            hdfs.rm(root + '/a')
 
     def clear(self):
         """Remove all keys below root - empties out mapping

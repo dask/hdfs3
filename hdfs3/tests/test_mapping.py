@@ -1,6 +1,7 @@
 from hdfs3.tests.test_hdfs3 import hdfs
 from hdfs3.mapping import HDFSMap
 
+hdfs = hdfs  # squash flake8 errors
 root = '/tmp/mapping'
 
 
@@ -47,7 +48,6 @@ def test_complex_keys(hdfs):
 
     mw['x', 1, 2] = b'hello world'
     assert mw['x', 1, 2] == b'hello world'
-    print(list(mw))
 
     assert ('x', 1, 2) in mw
 
@@ -71,7 +71,6 @@ def test_array(hdfs):
 
 
 def test_bytearray(hdfs):
-    from array import array
     d = HDFSMap(hdfs, root)
     d['x'] = bytearray(b'123')
 

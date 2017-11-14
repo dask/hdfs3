@@ -18,13 +18,14 @@ import pytest
 
 from hdfs3 import HDFileSystem, lib
 from hdfs3.utils import ensure_bytes, ensure_string
-from hdfs3.conf import conf_to_dict, conf, conf_defaults, guess_config
+from hdfs3.conf import conf_to_dict
 from hdfs3.compatibility import bytes, unicode, ConnectionError
 from hdfs3.utils import tmpfile
 
 
 test_host = 'localhost'
 test_port = 8020
+
 
 @pytest.yield_fixture
 def hdfs():
@@ -150,11 +151,10 @@ def test_seek(hdfs):
             assert f.seek(i) == i
 
 
-
 def test_libload():
     assert lib.hdfsGetLastError()
     assert len(lib.hdfsGetLastError.__doc__) > 0
-    assert lib.hdfsFileIsOpenForRead(lib.hdfsFile()) == False
+    assert lib.hdfsFileIsOpenForRead(lib.hdfsFile()) is False
 
 
 def test_bad_open(hdfs):
@@ -371,6 +371,7 @@ def test_cat(hdfs):
     with pytest.raises(IOError):
         hdfs.cat(b)
 
+
 def test_full_read(hdfs):
     with hdfs.open(a, 'wb', replication=1) as f:
         f.write(b'0123456789')
@@ -390,6 +391,7 @@ def test_full_read(hdfs):
         assert f.tell() == 7
         assert f.read(4) == b'789'
         assert f.tell() == 10
+
 
 def test_tail_head(hdfs):
     with hdfs.open(a, 'wb', replication=1) as f:
@@ -445,11 +447,11 @@ def conffile():
 
 def test_conf(conffile):
     should = {'dfs.block.size': '134217728',
-             'dfs.datanode.hdfs-blocks-metadata.enabled': 'true',
-             'dfs.namenode.name.dir': '/mnt/data/dfs/nn',
-             'dfs.permissions': 'false',
-             'dfs.permissions.superusergroup': 'hadoop',
-             'dfs.replication': '3'}
+              'dfs.datanode.hdfs-blocks-metadata.enabled': 'true',
+              'dfs.namenode.name.dir': '/mnt/data/dfs/nn',
+              'dfs.permissions': 'false',
+              'dfs.permissions.superusergroup': 'hadoop',
+              'dfs.replication': '3'}
     assert conf_to_dict(conffile) == should
 
 
@@ -484,8 +486,8 @@ def test_readline(hdfs, lineterminator):
         f.write(lineterminator.join([b'123', b'456', b'789']))
 
     with hdfs.open(a) as f:
-        assert f.readline(lineterminator=lineterminator) == b'123'+lineterminator
-        assert f.readline(lineterminator=lineterminator) == b'456'+lineterminator
+        assert f.readline(lineterminator=lineterminator) == b'123' + lineterminator
+        assert f.readline(lineterminator=lineterminator) == b'456' + lineterminator
         assert f.readline(lineterminator=lineterminator) == b'789'
         assert f.readline(lineterminator=lineterminator) == b''
 
@@ -497,9 +499,9 @@ def test_mixed_readline(hdfs, lineterminator):
 
     with hdfs.open(a) as f:
         assert f.read(1) == b'1'
-        assert f.readline(lineterminator=lineterminator) == b'23'+lineterminator
+        assert f.readline(lineterminator=lineterminator) == b'23' + lineterminator
         assert f.read(1) == b'4'
-        assert f.readline(lineterminator=lineterminator) == b'56'+lineterminator
+        assert f.readline(lineterminator=lineterminator) == b'56' + lineterminator
 
 
 def read_write(hdfs, q, i):
@@ -542,7 +544,7 @@ def test_stress_embarrassing(hdfs):
 
 def read_random_block(hdfs, fn, n, delim):
     for i in range(10):
-        hdfs.read_block(fn, randint(0, n/2), randint(n/2, n), delim)
+        hdfs.read_block(fn, randint(0, n / 2), randint(n / 2, n), delim)
 
 
 @pytest.mark.skipif(sys.version_info < (3, 4), reason='No spawn')
@@ -555,7 +557,7 @@ def test_stress_read_block(hdfs):
             f.write(data)
 
         threads = [T(target=read_random_block, args=(hdfs, a, len(data), b'\n'))
-                    for i in range(4)]
+                   for i in range(4)]
         for t in threads:
             t.daemon = True
             t.start()
@@ -627,7 +629,6 @@ def test_ensure():
     assert isinstance(ensure_string(b''), unicode)
     assert ensure_string({'x': b'', 'y': ''}) == {'x': '', 'y': ''}
     assert ensure_bytes({'x': b'', 'y': ''}) == {'x': b'', 'y': b''}
-
 
 
 def test_touch_exists(hdfs):

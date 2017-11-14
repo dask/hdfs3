@@ -30,7 +30,6 @@ def test_seek_delimiter_endline():
 
 
 def test_read_block():
-    fn = '/tmp/test/a'
     delimiter = b'\n'
     data = delimiter.join([b'123', b'456', b'789'])
     f = BytesIO(data)
