@@ -23,7 +23,7 @@ def test_with_data(hdfs):
     assert mw['x'] == b'123'
     assert bool(mw)
 
-    assert set(hdfs.walk(root)) == {root+'/x', root}
+    assert hdfs.ls(root) == [root + '/x']
     mw['x'] = b'000'
     assert mw['x'] == b'000'
 

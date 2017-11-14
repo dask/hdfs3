@@ -1,4 +1,4 @@
-
+import posixpath
 from collections import MutableMapping
 
 
@@ -68,8 +68,13 @@ class HDFSMap(MutableMapping):
             f.write(value)
 
     def keys(self):
-        l = len(self.root) + 1
-        return (fn[l:] for fn in self.hdfs.walk(self.root) if len(fn) > l)
+        for dirname, _, files in self.hdfs.walk(self.root):
+            if dirname == self.root:
+                base = ''
+            else:
+                base = posixpath.relpath(dirname, self.root)
+            for fn in files:
+                yield posixpath.join(base, fn)
 
     def __iter__(self):
         return self.keys()

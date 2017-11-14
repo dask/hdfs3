@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import io
 import multiprocessing
 import os
+import posixpath
 import tempfile
 import sys
 from random import randint
@@ -236,12 +237,17 @@ def test_makedirs(hdfs):
     hdfs.info('/tmp/test/a/b/c/d/e')
 
 
-def test_glob_walk(hdfs):
+tree = {'/tmp/test': (['c'], ['a', 'a1', 'a2', 'a3', 'b1']),
+        '/tmp/test/c': (['d'], ['x1', 'x2']),
+        '/tmp/test/c/d': ([], ['x3'])}
+
+
+def test_glob(hdfs):
     hdfs.mkdir('/tmp/test/c/')
     hdfs.mkdir('/tmp/test/c/d/')
-    filenames = ['a', 'a1', 'a2', 'a3', 'b1', 'c/x1', 'c/x2', 'c/d/x3']
-    filenames = ['/tmp/test/' + s for s in filenames]
-    for fn in filenames:
+    for fn in (posixpath.join(dirname, f)
+               for (dirname, (_, fils)) in tree.items()
+               for f in fils):
         hdfs.touch(fn)
 
     assert set(hdfs.glob('/tmp/test/a*')) == {'/tmp/test/a',
@@ -266,25 +272,27 @@ def test_glob_walk(hdfs):
                                              '/tmp/test/b1',
                                              '/tmp/test/c'}
 
-    assert set(hdfs.walk('/tmp/test')) == {'/tmp/test',
-                                           '/tmp/test/a',
-                                           '/tmp/test/a1',
-                                           '/tmp/test/a2',
-                                           '/tmp/test/a3',
-                                           '/tmp/test/b1',
-                                           '/tmp/test/c',
-                                           '/tmp/test/c/x1',
-                                           '/tmp/test/c/x2',
-                                           '/tmp/test/c/d',
-                                           '/tmp/test/c/d/x3'}
 
-    assert set(hdfs.walk('/tmp/test/c/')) == {'/tmp/test/c',
-                                              '/tmp/test/c/x1',
-                                              '/tmp/test/c/x2',
-                                              '/tmp/test/c/d',
-                                              '/tmp/test/c/d/x3'}
+def test_walk(hdfs):
+    hdfs.mkdir('/tmp/test/c/')
+    hdfs.mkdir('/tmp/test/c/d/')
+    for fn in (posixpath.join(dirname, f)
+               for (dirname, (_, fils)) in tree.items()
+               for f in fils):
+        hdfs.touch(fn)
 
-    assert set(hdfs.walk('/tmp/test/c/')) == set(hdfs.walk('/tmp/test/c'))
+    def check(path, skipped):
+        seen = set()
+        for dirname, dirs, fils in hdfs.walk(path):
+            seen.add(dirname)
+            sol_dirs, sol_fils = tree[dirname]
+            assert set(dirs) == set(sol_dirs)
+            assert set(fils) == set(sol_fils)
+        assert seen == (set(tree) - skipped)
+
+    check('/tmp/test', {'/tmp'})
+    check('/tmp/test/c', {'/tmp', '/tmp/test'})
+    check('/tmp/test/c/d', {'/tmp', '/tmp/test', '/tmp/test/c'})
 
 
 def test_info(hdfs):

@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import warnings
+import posixpath
 from collections import deque
 
 from .compatibility import FileNotFoundError, ConnectionError, PY3
@@ -308,9 +309,25 @@ class HDFileSystem(object):
             return False
 
     def walk(self, path):
-        """ Get all file entries below given path """
-        return ([ensure_trailing_slash(ensure_string(path), False)]
-                + list(self.du(path, False, True).keys()))
+        """Directory tree generator, see ``os.walk``"""
+        full_dirs = []
+        dirs = []
+        files = []
+
+        for info in self.ls(path, True):
+            name = info['name']
+            tail = posixpath.split(name)[1]
+            if info['kind'] == 'directory':
+                full_dirs.append(name)
+                dirs.append(tail)
+            else:
+                files.append(tail)
+
+        yield path, dirs, files
+
+        for d in full_dirs:
+            for res in self.walk(d):
+                yield res
 
     def glob(self, path):
         """ Get list of paths mathing glob-like pattern (i.e., with "*"s).
@@ -333,13 +350,16 @@ class HDFileSystem(object):
             root = path[:ind+1]
         else:
             root = '/'
-        allfiles = self.walk(root)
+        allfiles = []
+        for dirname, dirs, fils in self.walk(root):
+            allfiles.extend(posixpath.join(dirname, d) for d in dirs)
+            allfiles.extend(posixpath.join(dirname, f) for f in fils)
         pattern = re.compile("^" + path.replace('//', '/')
-                                        .rstrip('/')
-                                        .replace('*', '[^/]*')
-                                        .replace('?', '.') + "$")
-        out = [f for f in allfiles if re.match(pattern,
-               f.replace('//', '/').rstrip('/'))]
+                                       .rstrip('/')
+                                       .replace('*', '[^/]*')
+                                       .replace('?', '.') + "$")
+        out = [f for f in allfiles
+               if pattern.match(f.replace('//', '/').rstrip('/'))]
         return out
 
     def ls(self, path, detail=False):
