@@ -4,7 +4,14 @@
 sudo service hadoop-hdfs-namenode start
 sudo service hadoop-hdfs-datanode start
 
-echo "Ready"
+echo "HDFS Started"
 
-# Block
-sleep infinity
+if [[ $1 == "-d" ]]; then
+    # Running as a daemon, indicate to host that hdfs is started
+    touch /hdfs3/hdfs-initialized-indicator
+    sleep infinity
+fi
+
+if [[ $1 == "-bash" ]]; then
+    /bin/bash
+fi

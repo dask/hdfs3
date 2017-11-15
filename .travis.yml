@@ -1,35 +1,20 @@
-language: python
-
-python:
-  - 2.7
-  - 3.5
-
-sudo: true
-
+language: generic
+sudo: false
+dist: trusty
 services:
   - docker
 
+env:
+  matrix:
+    - PYTHON=2.7  CONDA_ENV=/opt/conda/envs/py27
+    - PYTHON=3.5  CONDA_ENV=/opt/conda
+
 before_install:
-  - pwd
-  - echo $PYTHON_VERSION
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-      export DOCKER_ENV=/opt/conda;
-    else
-      export DOCKER_ENV=/opt/conda/envs/py3;
-    fi
-  - pushd continuous_integration
-  - docker build -t libhdfs3.hdfs .
-  - popd
-  - docker run -d -p 8020:8020 -p 50070:50070 -v $(pwd):/hdfs3 libhdfs3.hdfs
-  - export CONTAINER_ID=$(docker ps -l -q)
-  - sleep 60  # Wait for namenode and datanode
+  - source continuous_integration/setup_hdfs.sh
 
 install:
-  - pwd
-  - echo $DOCKER_ENV
-  - docker exec -it $CONTAINER_ID $DOCKER_ENV/bin/python setup.py install
+  - docker exec -it $CONTAINER_ID $CONDA_ENV/bin/python setup.py install
 
 script:
-  - pwd
-  - docker exec -it $CONTAINER_ID $DOCKER_ENV/bin/py.test hdfs3 -s -vv
-  - docker exec -it $CONTAINER_ID $DOCKER_ENV/bin/flake8 hdfs3
+  - docker exec -it $CONTAINER_ID $CONDA_ENV/bin/py.test hdfs3 -s -vv
+  - if [[$PYTHON == "2.7"]]; then docker exec -it $CONTAINER_ID $CONDA_ENV/bin/flake8 hdfs3; fi

@@ -1,34 +1,36 @@
-# Continious Integration
+# Setting up testing using docker
 
-## Local test
+Assumes docker is already installed and the docker-daemon is running.
 
-Requirements:
--  `docker`
+From the root directory in the repo:
 
-Build the container:
+- First get the docker container:
+
 ```bash
-docker build -t libhdfs3 .
+# Either pull it from docker hub
+docker pull daskdev/hdfs3dev
+
+# Or build it locally
+docker build -t daskdev/hdfs3dev continuous_integration/
 ```
 
-Start the container and wait for the it to be ready:
+- Start the container and wait for it to be ready:
 
 ```bash
-docker run -it -p 8020:8020 -p 50070:50070 -v $(pwd):/hdfs3 libhdfs3
+source continuous_integration/startup_hdfs.sh
 ```
 
-Now the port `8020` and `50070` are in the host are pointing to the container and the source code (as a shared volume) is available in the container under `/hdfs3`
-
-To start a bash session in the running container:
+- Start a bash session in the running container:
 
 ```bash
-# Get the container ID
+# CONTAINER_ID should be defined from above, but if it isn't you can get it from
 export CONTAINER_ID=$(docker ps -l -q)
 
 # Start the bash session
 docker exec -it $CONTAINER_ID bash
 ```
 
-Now that we are in the container we can install the library and run the test:
+- Install the library and run the tests
 
 ```bash
 python setup.py install
