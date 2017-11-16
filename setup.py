@@ -2,9 +2,11 @@
 
 import os
 from setuptools import setup
+import versioneer
 
 setup(name='hdfs3',
-      version='0.2.0',
+      version=versioneer.get_version(),
+      cmdclass=versioneer.get_cmdclass(),
       description='Python wrappers for libhdfs3, a native HDFS client',
       url='http://github.com/dask/hdfs3/',
       maintainer='Martin Durant',
