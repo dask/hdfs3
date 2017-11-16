@@ -14,7 +14,13 @@ before_install:
 
 install:
   - docker exec -it $CONTAINER_ID $CONDA_ENV/bin/python setup.py install
+  - |
+    if [[ $PYTHON == "3.5" ]]; then
+        docker exec -it $CONTAINER_ID conda install -y -q dask distributed pyarrow -c conda-forge
+        docker exec -it $CONTAINER_ID pip install -U --no-deps git+https://github.com/dask/dask.git
+        docker exec -it $CONTAINER_ID pip install -U --no-deps git+https://github.com/dask/distributed.git
+    fi;
 
 script:
-  - docker exec -it $CONTAINER_ID $CONDA_ENV/bin/py.test hdfs3 -s -vv
-  - if [[$PYTHON == "2.7"]]; then docker exec -it $CONTAINER_ID $CONDA_ENV/bin/flake8 hdfs3; fi
+  - docker exec -it $CONTAINER_ID $CONDA_ENV/bin/py.test hdfs3 -vv
+  - if [[ $PYTHON == "3.5" ]]; then docker exec -it $CONTAINER_ID $CONDA_ENV/bin/flake8 hdfs3; fi

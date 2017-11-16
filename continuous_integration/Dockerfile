@@ -1,7 +1,7 @@
 FROM ubuntu:trusty
 
 RUN apt-get update && \
-    apt-get install -y -q curl bzip2 && \
+    apt-get install -y -q curl bzip2 git && \
     rm -rf /var/lib/apt/lists/*
 
 # Install CDH5 in a single node: Pseudo Distributed
