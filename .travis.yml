@@ -24,3 +24,6 @@ install:
 script:
   - docker exec -it $CONTAINER_ID $CONDA_ENV/bin/py.test hdfs3 -vv
   - if [[ $PYTHON == "3.5" ]]; then docker exec -it $CONTAINER_ID $CONDA_ENV/bin/flake8 hdfs3; fi
+
+notifications:
+  email: false
