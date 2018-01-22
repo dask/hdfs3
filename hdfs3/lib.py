@@ -2,9 +2,11 @@
 """
 Low-level interface to libhdfs3
 """
+from __future__ import absolute_import
 
 import sys
 import ctypes as ct
+from .utils import ensure_string
 
 
 PY3 = sys.version_info.major > 2
@@ -47,13 +49,28 @@ class EncryptionFileInfo(ct.Structure):
                 ('mIv', ct.c_char_p),
                 ('zone_key_version_name', ct.c_char_p)]
 
+    def to_dict(self):
+        return {'suite': self.suite,
+                'protocol_version': self.protocol_version,
+                'key': self.key,
+                'key_name': ensure_string(self.key_name),
+                'mIv': self.mIv,
+                'zone_key_version_name': self.zone_key_version_name}
+
 
 class EncryptionZoneInfo(ct.Structure):
-    _fileds_ = [('suite', ct.c_int),
+    _fields_ = [('suite', ct.c_int),
                 ('protocol_version', ct.c_int),
                 ('mId', ct.c_int64),
                 ('path', ct.c_char_p),
                 ('key_name', ct.c_char_p)]
+
+    def to_dict(self):
+        return {'suite': self.suite,
+                'protocol_version': self.protocol_version,
+                'mId': self.mId,
+                'path': self.path,
+                'key_name': ensure_string(self.key_name)}
 
 
 class FileInfo(ct.Structure):
@@ -68,6 +85,26 @@ class FileInfo(ct.Structure):
                 ('permissions', ct.c_short),  # view as octal
                 ('last_access', ct.c_int64),  # time_t, could be 32bit
                 ('encryption_info', ct.POINTER(EncryptionFileInfo))]
+
+    def to_dict(self):
+        if self.encryption_info:
+            e_info = self.encryption_info.contents.to_dict()
+        else:
+            e_info = None
+
+        kind = {68: 'directory', 70: 'file'}.get(self.kind)
+
+        return {'kind': kind,
+                'name': ensure_string(self.name),
+                'last_mod': self.last_mod,
+                'size': self.size,
+                'replication': self.replication,
+                'block_size': self.block_size,
+                'owner': ensure_string(self.owner),
+                'group': ensure_string(self.group),
+                'permissions': self.permissions,
+                'last_access': self.last_access,
+                'encryption_info': e_info}
 
 
 hdfsGetPathInfo = _lib.hdfsGetPathInfo

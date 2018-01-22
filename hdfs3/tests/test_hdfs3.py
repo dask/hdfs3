@@ -627,8 +627,6 @@ def test_ensure():
     assert isinstance(ensure_bytes(b''), bytes)
     assert isinstance(ensure_string(''), unicode)
     assert isinstance(ensure_string(b''), unicode)
-    assert ensure_string({'x': b'', 'y': ''}) == {'x': '', 'y': ''}
-    assert ensure_bytes({'x': b'', 'y': ''}) == {'x': b'', 'y': b''}
 
 
 def test_touch_exists(hdfs):

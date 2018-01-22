@@ -1,10 +1,11 @@
+from __future__ import absolute_import
 
 from contextlib import contextmanager
 import os
 import shutil
 import tempfile
 
-from .compatibility import PY3
+from .compatibility import PY3, bytes, unicode
 
 
 def seek_delimiter(file, delimiter, blocksize, allow_zero=True):
@@ -94,9 +95,7 @@ def read_block(f, offset, length, delimiter=None):
 
 def ensure_bytes(s):
     """ Give strings that ctypes is guaranteed to handle """
-    if PY3 and isinstance(s, bytes):
-        return s
-    if not PY3 and isinstance(s, str):
+    if isinstance(s, bytes):
         return s
     if hasattr(s, 'encode'):
         return s.encode()
@@ -106,11 +105,8 @@ def ensure_bytes(s):
         return bytes(s)
     if not PY3 and hasattr(s, 'tostring'):
         return s.tostring()
-    if isinstance(s, dict):
-        return {k: ensure_bytes(v) for k, v in s.items()}
-    else:
-        # Perhaps it works anyway - could raise here
-        return s
+    # Perhaps it works anyway - could raise here
+    return s
 
 
 def ensure_string(s):
@@ -120,15 +116,10 @@ def ensure_string(s):
     '123'
     >>> ensure_string('123')
     '123'
-    >>> ensure_string({'x': b'123'})
-    {'x': '123'}
     """
-    if isinstance(s, dict):
-        return {k: ensure_string(v) for k, v in s.items()}
-    if hasattr(s, 'decode'):
+    if not isinstance(s, unicode):
         return s.decode()
-    else:
-        return s
+    return s
 
 
 def ensure_trailing_slash(s, ensure=True):

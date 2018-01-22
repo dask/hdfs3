@@ -292,9 +292,9 @@ class HDFileSystem(object):
         if not self.exists(path):
             raise FileNotFoundError(path)
         fi = _lib.hdfsGetPathInfo(self._handle, ensure_bytes(path)).contents
-        out = info_to_dict(fi)
+        out = fi.to_dict()
         _lib.hdfsFreeFileInfo(ctypes.byref(fi), 1)
-        return ensure_string(out)
+        return out
 
     def isdir(self, path):
         """Return True if path refers to an existing directory."""
@@ -381,7 +381,7 @@ class HDFileSystem(object):
         num = ctypes.c_int(0)
         fi = _lib.hdfsListDirectory(self._handle, ensure_bytes(path),
                                     ctypes.byref(num))
-        out = [ensure_string(info_to_dict(fi[i])) for i in range(num.value)]
+        out = [fi[i].to_dict() for i in range(num.value)]
         _lib.hdfsFreeFileInfo(fi, num.value)
         if detail:
             return out
@@ -637,7 +637,7 @@ class HDFileSystem(object):
             msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError("EZ listing failed: %s" % msg)
 
-        res = [struct_to_dict(out[i]) for i in range(x.value)]
+        res = [out[i].to_dict() for i in range(x.value)]
         if res:
             _lib.hdfsFreeEncryptionZoneInfo(out, x)
         return res
@@ -656,23 +656,6 @@ def get_lib():
     if _lib is None:
         from .lib import _lib as l
         _lib = l
-
-
-def struct_to_dict(s):
-    """ Return dictionary views of a simple ctypes record-like structure """
-    return dict((ensure_string(name), getattr(s, name))
-                for (name, p) in s._fields_)
-
-
-def info_to_dict(s):
-    """ Process data returned by hdfsInfo """
-    d = struct_to_dict(s)
-    d['kind'] = {68: 'directory', 70: 'file'}[d['kind']]
-    if d['encryption_info']:
-        d['encryption_info'] = struct_to_dict(d['encryption_info'].contents)
-    else:
-        d['encryption_info'] = None
-    return d
 
 
 mode_numbers = {'w': 1, 'r': 0, 'a': 1025,
