@@ -5,9 +5,9 @@ from __future__ import absolute_import
 import ctypes
 import logging
 import os
+import posixpath
 import re
 import warnings
-import posixpath
 from collections import deque
 
 from .compatibility import FileNotFoundError, ConnectionError
@@ -17,6 +17,9 @@ from .utils import (read_block, seek_delimiter, ensure_bytes, ensure_string,
 
 logger = logging.getLogger(__name__)
 _lib = None
+
+DEFAULT_READ_BUFFER_SIZE = 2 ** 16
+DEFAULT_WRITE_BUFFER_SIZE = 2 ** 26
 
 
 class HDFileSystem(object):
@@ -359,9 +362,9 @@ class HDFileSystem(object):
             allpaths.extend(posixpath.join(dirname, d) for d in dirs)
             allpaths.extend(posixpath.join(dirname, f) for f in fils)
         pattern = re.compile("^" + path.replace('//', '/')
-                                       .rstrip('/')
-                                       .replace('*', '[^/]*')
-                                       .replace('?', '.') + "$")
+                             .rstrip('/')
+                             .replace('*', '[^/]*')
+                             .replace('?', '.') + "$")
         return [p for p in allpaths
                 if pattern.match(p.replace('//', '/').rstrip('/'))]
 
@@ -537,7 +540,7 @@ class HDFileSystem(object):
             result = f.read()
         return result
 
-    def get(self, hdfs_path, local_path, blocksize=2**16):
+    def get(self, hdfs_path, local_path, blocksize=DEFAULT_READ_BUFFER_SIZE):
         """ Copy HDFS file to local """
         # TODO: _lib.hdfsCopy() may do this more efficiently
         if not self.exists(hdfs_path):
@@ -549,7 +552,7 @@ class HDFileSystem(object):
                     out = f.read(blocksize)
                     f2.write(out)
 
-    def getmerge(self, path, filename, blocksize=2**16):
+    def getmerge(self, path, filename, blocksize=DEFAULT_READ_BUFFER_SIZE):
         """ Concat all files in path (a directory) to local output file """
         files = self.ls(path)
         with open(filename, 'wb') as f2:
@@ -560,7 +563,7 @@ class HDFileSystem(object):
                         out = f.read(blocksize)
                         f2.write(out)
 
-    def put(self, filename, path, chunk=2**16, replication=0, block_size=0):
+    def put(self, filename, path, chunk=DEFAULT_WRITE_BUFFER_SIZE, replication=0, block_size=0):
         """ Copy local file to path in HDFS """
         with self.open(path, 'wb', replication=replication,
                        block_size=block_size) as target:
@@ -674,6 +677,7 @@ class HDFile(object):
     >>> with hdfs.open('/path/to/hdfs/file.csv') as f:  # doctest: +SKIP
     ...     df = pd.read_csv(f, nrows=1000)  # doctest: +SKIP
     """
+
     def __init__(self, fs, path, mode, replication=0, buff=0, block_size=0):
         """ Called by open on a HDFileSystem """
         if 't' in mode:
@@ -707,15 +711,16 @@ class HDFile(object):
         if not _lib.hdfsFileIsOpenForRead(self._handle):
             raise IOError('File not read mode')
         buffers = []
+        buffer_size = self.buff if self.buff != 0 else DEFAULT_READ_BUFFER_SIZE
 
         if length is None:
             out = 1
             while out:
-                out = self.read(2**16)
+                out = self.read(buffer_size)
                 buffers.append(out)
         else:
             while length:
-                bufsize = min(2**16, length)
+                bufsize = min(buffer_size, length)
                 p = ctypes.create_string_buffer(bufsize)
                 ret = _lib.hdfsRead(
                     self._fs, self._handle, p, ctypes.c_int32(bufsize))
@@ -732,7 +737,7 @@ class HDFile(object):
 
         return b''.join(buffers)
 
-    def readline(self, chunksize=2**8, lineterminator='\n'):
+    def readline(self, chunksize=0, lineterminator='\n'):
         """ Return a line using buffered reading.
 
         A line is a sequence of bytes between ``'\n'`` markers (or given
@@ -744,6 +749,8 @@ class HDFile(object):
         in general better to wrap an HDFile with an ``io.TextIOWrapper`` for
         buffering, text decoding and newline support.
         """
+        if chunksize == 0:
+            chunksize = self.buff if self.buff != 0 else DEFAULT_READ_BUFFER_SIZE
         lineterminator = ensure_bytes(lineterminator)
         start = self.tell()
         seek_delimiter(self, lineterminator, chunksize, allow_zero=False)
@@ -832,7 +839,7 @@ class HDFile(object):
         if not _lib.hdfsFileIsOpenForWrite(self._handle):
             msg = ensure_string(_lib.hdfsGetLastError()).split('\n')[0]
             raise IOError('File not write mode: {}'.format(msg))
-        write_block = 64 * 2**20
+        write_block = self.buff if self.buff != 0 else DEFAULT_WRITE_BUFFER_SIZE
         for offset in range(0, len(data), write_block):
             d = ensure_bytes(data[offset:offset + write_block])
             if not _lib.hdfsWrite(self._fs, self._handle, d, len(d)) == len(d):
