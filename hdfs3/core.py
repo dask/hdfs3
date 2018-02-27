@@ -57,7 +57,7 @@ class HDFileSystem(object):
                 of the cluster that can be found in "fs.defaultFS" option.
             port : int (8020)
                 namenode RPC port usually 8020, in HA mode port mast be None
-            user, ticket_cache, token : str
+            user, ticket_cache, token, effective_user : str
                 kerberos things
         """
         self.conf = conf.copy() if autoconf else {}
@@ -120,6 +120,7 @@ class HDFileSystem(object):
         user = conf.pop('user', None)
         if user is not None:
             _lib.hdfsBuilderSetUserName(o, ensure_bytes(user))
+        effective_user = ensure_bytes(conf.pop('effective_user', None))
 
         ticket_cache = conf.pop('ticket_cache', None)
         if ticket_cache is not None:
@@ -134,7 +135,7 @@ class HDFileSystem(object):
                                               ensure_bytes(val)) == 0:
                 warnings.warn('Setting conf parameter %s failed' % par)
 
-        fs = _lib.hdfsBuilderConnect(o)
+        fs = _lib.hdfsBuilderConnect(o, effective_user)
         _lib.hdfsFreeBuilder(o)
         if fs:
             logger.debug("Connect to handle %d", fs.contents.filesystem)

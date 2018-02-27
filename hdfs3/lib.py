@@ -203,7 +203,7 @@ hdfsConnectNewInstance.restype = ct.POINTER(hdfsFS)
 hdfsConnectNewInstance.__doc__ = "New structure for connection information"
 
 hdfsBuilderConnect = _lib.hdfsBuilderConnect
-hdfsBuilderConnect.argtypes = [ct.POINTER(hdfsBuilder)]
+hdfsBuilderConnect.argtypes = [ct.POINTER(hdfsBuilder), ct.c_char_p]
 hdfsBuilderConnect.restype = ct.POINTER(hdfsFS)
 hdfsBuilderConnect.__doc__ = """Connect to HDFS using the parameters defined by the builder.
 
