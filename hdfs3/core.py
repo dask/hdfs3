@@ -8,9 +8,11 @@ import os
 import posixpath
 import re
 import warnings
+import operator
+import functools
 from collections import deque
 
-from .compatibility import FileNotFoundError, ConnectionError
+from .compatibility import FileNotFoundError, ConnectionError, PY3
 from .conf import conf
 from .utils import (read_block, seek_delimiter, ensure_bytes, ensure_string,
                     ensure_trailing_slash, MyNone)
@@ -20,6 +22,13 @@ _lib = None
 
 DEFAULT_READ_BUFFER_SIZE = 2 ** 16
 DEFAULT_WRITE_BUFFER_SIZE = 2 ** 26
+
+
+def _nbytes(buf):
+    buf = memoryview(buf)
+    if PY3:
+        return buf.nbytes
+    return buf.itemsize * functools.reduce(operator.mul, buf.shape)
 
 
 class HDFileSystem(object):
@@ -695,6 +704,7 @@ class HDFile(object):
         self.block_size = block_size
         self.lines = deque([])
         self._set_handle()
+        self.size = self.info()['size']
 
     def _set_handle(self):
         out = _lib.hdfsOpenFile(self._fs, ensure_bytes(self.path),
@@ -707,36 +717,94 @@ class HDFile(object):
                           (self.path, self.mode, msg))
         self._handle = out
 
-    def read(self, length=None):
-        """ Read bytes from open file """
+    def readinto(self, length, out):
+        """
+        Read up to ``length`` bytes from the file into the ``out`` buffer,
+        which can be of any type that implements the buffer protocol (example: ``bytearray``,
+        ``memoryview`` (py3 only), numpy array, ...).
+
+        Parameters
+        ----------
+        length : int
+            maximum number of bytes to read
+
+        out : buffer
+            where to write the output data
+
+        Returns
+        -------
+        int
+            number of bytes read
+        """
         if not _lib.hdfsFileIsOpenForRead(self._handle):
-            raise IOError('File not read mode')
-        buffers = []
-        buffer_size = self.buff if self.buff != 0 else DEFAULT_READ_BUFFER_SIZE
+            raise IOError('File not in read mode')
+        bufsize = length
+        bufpos = 0
 
-        if length is None:
-            out = 1
-            while out:
-                out = self.read(buffer_size)
-                buffers.append(out)
+        # convert from buffer protocol to ctypes-compatible type
+        buflen = _nbytes(out)
+        buf_for_ctypes = (ctypes.c_byte * buflen).from_buffer(out)
+
+        while length:
+            bufp = ctypes.byref(buf_for_ctypes, bufpos)
+            ret = _lib.hdfsRead(
+                self._fs, self._handle, bufp, ctypes.c_int32(bufsize - bufpos))
+            if ret == 0:  # EOF
+                break
+            if ret > 0:
+                length -= ret
+                bufpos += ret
+            else:
+                raise IOError('Read file %s Failed:' % self.path, -ret)
+        return bufpos
+
+    def read(self, length=None, out_buffer=None):
+        """
+        Read up to ``length`` bytes from the file. Reads shorter than ``length``
+        only occur at the end of the file, if less data is available.
+
+        If ``out_buffer`` is given, read directly into ``out_buffer``. It can be
+        anything that implements the buffer protocol, for example ``bytearray``,
+        ``memoryview`` (py3 only), numpy arrays, ...
+
+        Parameters
+        ----------
+
+        length : int
+            number of bytes to read. if it is None, read all remaining bytes
+            from the current position.
+
+        out_buffer : buffer, None or True
+            the buffer to use as output, None to return bytes, True to create
+            and return new buffer
+
+        Returns
+        -------
+        bytes
+            the data read (only if out_buffer is None)
+
+        memoryview
+            the data read as a memoryview into the buffer
+        """
+        return_buffer = out_buffer is not None
+        max_read = self.size - self.tell()
+        read_length = max_read if length in [None, -1] else length
+        read_length = min(max_read, read_length)
+
+        if out_buffer is None or out_buffer is True:
+            out_buffer = bytearray(read_length)
         else:
-            while length:
-                bufsize = min(buffer_size, length)
-                p = ctypes.create_string_buffer(bufsize)
-                ret = _lib.hdfsRead(
-                    self._fs, self._handle, p, ctypes.c_int32(bufsize))
-                if ret == 0:
-                    break
-                if ret > 0:
-                    if ret < bufsize:
-                        buffers.append(p.raw[:ret])
-                    elif ret == bufsize:
-                        buffers.append(p.raw)
-                    length -= ret
-                else:
-                    raise IOError('Read file %s Failed:' % self.path, -ret)
+            if _nbytes(out_buffer) < read_length:
+                raise IOError('buffer too small (%d < %d)' % (_nbytes(out_buffer), read_length))
 
-        return b''.join(buffers)
+        bytes_read = self.readinto(length=read_length, out=out_buffer)
+
+        if bytes_read < _nbytes(out_buffer):
+            out_buffer = memoryview(out_buffer)[:bytes_read]
+
+        if return_buffer:
+            return memoryview(out_buffer)
+        return memoryview(out_buffer).tobytes()
 
     def readline(self, chunksize=0, lineterminator='\n'):
         """ Return a line using buffered reading.

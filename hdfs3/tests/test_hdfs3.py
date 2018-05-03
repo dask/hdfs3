@@ -666,6 +666,65 @@ def test_readlines(hdfs):
     # assert all(l in [b'fe\n', b'fi\n', b'fo', b'fo\n'] for l in lines)
 
 
+def test_readinto(hdfs):
+    with hdfs.open(a, 'wb', replication=1) as f:
+        f.write(b'123\n456')
+
+    with hdfs.open(a, 'rb') as f:
+        buf = bytearray(10)
+        assert f.readinto(length=7, out=buf) == 7
+        assert memoryview(buf).tobytes() == b'123\n456\x00\x00\x00'
+
+    with hdfs.open(a, 'rb') as f:
+        buf = bytearray(10)
+        assert f.readinto(length=7, out=buf) == 7
+        assert f.readinto(length=1, out=buf) == 0
+
+    with hdfs.open(a, 'wb', replication=1) as f:
+        buf = bytearray(10)
+        with pytest.raises(IOError):
+            f.readinto(length=1, out=buf)
+
+
+def test_read_with_out_buffer(hdfs):
+    with hdfs.open(a, 'wb', replication=1) as f:
+        f.write(b'123\n456')
+
+    with hdfs.open(a, 'rb') as f:
+        buf = bytearray(10)
+        retbuf = f.read(length=7, out_buffer=buf)
+        assert memoryview(buf).tobytes() == b'123\n456\x00\x00\x00'
+        assert retbuf.tobytes() == b'123\n456'
+
+    # explicitly test None and True for out_buffer:
+    with hdfs.open(a, 'rb') as f:
+        retbytes = f.read(length=7, out_buffer=None)
+        assert retbytes == b'123\n456'
+
+    with hdfs.open(a, 'rb') as f:
+        retbuf = f.read(length=7, out_buffer=True)
+        assert retbuf.tobytes() == b'123\n456'
+
+    # too large read is ok if the file is smaller than the buffer:
+    with hdfs.open(a, 'rb') as f:
+        buf = bytearray(10)
+        retbuf = f.read(length=11, out_buffer=buf)
+        assert memoryview(buf).tobytes() == b'123\n456\x00\x00\x00'
+        assert retbuf.tobytes() == b'123\n456'
+
+    # buffer too small:
+    with hdfs.open(a, 'rb') as f:
+        buf = bytearray(6)
+        with pytest.raises(IOError):
+            retbuf = f.read(length=7, out_buffer=buf)
+
+    # file not open for reading:
+    with hdfs.open(a, 'wb', replication=1) as f:
+        buf = bytearray(10)
+        with pytest.raises(IOError):
+            f.read(length=1, out_buffer=buf)
+
+
 def test_put(hdfs):
     data = b'1234567890' * 10000
     with tmpfile() as fn:
