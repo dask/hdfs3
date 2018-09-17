@@ -1,6 +1,19 @@
 hdfs3
 =====
 
+This project is not undergoing development
+------------------------------------------
+
+Pyarrow's JNI `hdfs interface`_ is mature and stable. It also has fewer problems
+with configuration and various security settings, and does not require the complex
+build process of libhdfs3. Therefore, all users who have trouble with hdfs3 are
+recommended to try pyarrow.
+
+.. _hdfs interface: https://arrow.apache.org/docs/python/filesystems.html#hadoop-file-system-hdfs
+
+Introduction
+------------
+
 Use HDFS natively from Python.
 
 The `Hadoop File System`_ (HDFS) is a widely deployed, distributed, data-local
