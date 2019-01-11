@@ -85,7 +85,7 @@ In python code, this could look like the following:
             "dfs.ha.namenodes.nameservice1": "namenode113,namenode188",
             "dfs.namenode.rpc-address.nameservice1.namenode113": "hostname_of_server1:8020",
             "dfs.namenode.rpc-address.nameservice1.namenode188": "hostname_of_server2:8020",
-            "dfs.namenode.http-address.nameservice1.namenode188": "hostname_of_server1:50070",
+            "dfs.namenode.http-address.nameservice1.namenode113": "hostname_of_server1:50070",
             "dfs.namenode.http-address.nameservice1.namenode188": "hostname_of_server2:50070",
             "hadoop.security.authentication": "kerberos"
     }
